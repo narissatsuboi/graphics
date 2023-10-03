@@ -29,7 +29,7 @@
     <ProjectGuid>{f31d09fc-2200-467b-854e-e1d69fe47164}</ProjectGuid>
     <RootNamespace>My0DemoVersionGl</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>1-Demo-VersionGl</ProjectName>
+    <ProjectName>1-ClearScreenColor</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
