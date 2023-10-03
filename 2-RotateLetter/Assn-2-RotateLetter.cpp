@@ -9,8 +9,28 @@ GLuint vBuffer = 0; // GPU buffer ID
 GLuint program = 0; // GLSL shader program ID
 
 // a triangle (3 2D locations, 3 RGB colors)
-vec2 points[] = { {-.9f, -.6f}, {0.f, .6f}, {.9f, -.6f} };
-vec3 colors[] = { {0, 0, 1}, {1, 0, 0}, {0, 1, 0} };
+// vec2 points[] = { {-.9f, -.6f}, {0.f, .6f}, {.9f, -.6f} };
+// vec3 colors[] = { {0, 0, 1}, {1, 0, 0}, {0, 1, 0} };
+
+// the letter "B"
+vec3 colors[] = {
+	{0.8, 0.2, 0.7},
+	{0.5, 0.9, 0.1},
+	{0.2, 0.6, 0.9},
+	{0.7, 0.3, 0.6},
+	{0.9, 0.7, 0.2},
+	{0.4, 0.1, 0.8},
+	{0.6, 0.4, 0.7},
+	{0.1, 0.8, 0.5},
+	{0.8, 0.6, 0.1},
+	{0.3, 0.7, 0.5}
+};
+
+vec2 points[] = {{125, 225}, {50, 50}, {200, 50}, {240, 100}, {240, 175},
+{185, 225}, {217, 260}, {217, 315}, {175, 350}, {50, 350}};
+int nPoints = sizeof(points) / sizeof(vec2);
+int triangles[][3] = {{0,1,2}, {0,2,3}, {0,3,4}, {0,4,5}, {0,5,6}, {0,6,7}, {0,7,8}, {0,8,9}, {0,9,1}};
+int nTriangles = sizeof(triangles) / (3 * sizeof(int));
 
 const char *vertexShader = R"(
 	#version 130
@@ -43,7 +63,9 @@ void Display() {
 	VertexAttribPointer(program, "point", 2, 0, (void *) 0);
 	VertexAttribPointer(program, "color", 3, 0, (void *) sizeof(points));
 	// render three vertices as one triangle
-	glDrawArrays(GL_TRIANGLES, 0, 3);
+	// glDrawArrays(GL_TRIANGLES, 0, 3);
+	int nVertices = sizeof(triangles) / sizeof(int);
+	glDrawElements(GL_TRIANGLES, nTriangles*3, GL_UNSIGNED_INT, triangles);
 	glFlush();
 }
 
@@ -60,11 +82,23 @@ void BufferVertices() {
 	glBufferSubData(GL_ARRAY_BUFFER, sPoints, sColors, colors);
 }
 
+void NormalizePoints(float s = 1) {
+	// scale and offset so points are in range +/-s, centered at origin 
+	vec2 min, max;
+	float range = Bounds(points, nPoints, min, max); // in VecMat.h  
+	float scale = 2 * s / range;
+	vec2 center = (min + max) / 2;
+	for (int i = 0; i < nPoints; i++)
+		points[i] = scale * (points[i] - center);
+}
+
 int main() {
 	// init window
 	GLFWwindow *w = InitGLFW(100, 100, 800, 800, "Colorful Triangle");
 	// build shader program
 	program = LinkProgramViaCode(&vertexShader, &pixelShader);
+	// Fit the letter
+	NormalizePoints(0.8);
 	// allocate GPU vertex memory
 	BufferVertices();
 	// event loop
