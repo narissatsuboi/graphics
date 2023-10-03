@@ -7,6 +7,8 @@
 
 GLuint vBuffer = 0; // GPU buffer ID
 GLuint program = 0; // GLSL shader program ID
+vec2 mouseWas, mouseNow; // rotation control 
+
 
 // a triangle (3 2D locations, 3 RGB colors)
 // vec2 points[] = { {-.9f, -.6f}, {0.f, .6f}, {.9f, -.6f} };
@@ -31,14 +33,16 @@ vec2 points[] = {{125, 225}, {50, 50}, {200, 50}, {240, 100}, {240, 175},
 int nPoints = sizeof(points) / sizeof(vec2);
 int triangles[][3] = {{0,1,2}, {0,2,3}, {0,3,4}, {0,4,5}, {0,5,6}, {0,6,7}, {0,7,8}, {0,8,9}, {0,9,1}};
 int nTriangles = sizeof(triangles) / (3 * sizeof(int));
+//gl_Position = vec4(point, 0, 1);
 
 const char *vertexShader = R"(
 	#version 130
+	uniform mat4 view; 
 	in vec2 point;
 	in vec3 color;
 	out vec3 vColor;
 	void main() {
-		gl_Position = vec4(point, 0, 1);
+		gl_Position = view*vec4(point, 0, 1); // so elegant! 
 		vColor = color;
 	}
 )";
@@ -53,12 +57,17 @@ const char *pixelShader = R"(
 )";
 
 void Display() {
+	// rotate
+	mat4 view = RotateY(mouseNow.x) * RotateX(mouseNow.y); // compound transform 
+	SetUniform(program, "view", view);
+	
 	// clear background
 	glClearColor(1, 1, 1, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
 	// run shader program, enable GPU vertex buffer
 	glUseProgram(program);
 	glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
+
 	// connect GPU point and color buffers to shader inputs
 	VertexAttribPointer(program, "point", 2, 0, (void *) 0);
 	VertexAttribPointer(program, "color", 3, 0, (void *) sizeof(points));
@@ -92,12 +101,25 @@ void NormalizePoints(float s = 1) {
 		points[i] = scale * (points[i] - center);
 }
 
+void MouseButton(float x, float y, bool left, bool down) {
+	if (left && down)
+		mouseWas = vec2(x, y);
+}
+
+void MouseMove(float x, float y, bool leftDown, bool rightDown) {
+	if (leftDown) {
+		vec2 m(x, y);
+		mouseNow += (m - mouseWas);
+		mouseWas = m;
+	}
+}
+
 int main() {
 	// init window
 	GLFWwindow *w = InitGLFW(100, 100, 800, 800, "Colorful Triangle");
 	// build shader program
 	program = LinkProgramViaCode(&vertexShader, &pixelShader);
-	// Fit the letter
+	// fit the letter
 	NormalizePoints(0.8);
 	// allocate GPU vertex memory
 	BufferVertices();
@@ -106,6 +128,9 @@ int main() {
 		Display();
 		glfwSwapBuffers(w);
 		glfwPollEvents();
+		// mouse callback routines
+		RegisterMouseButton(MouseButton);
+		RegisterMouseMove(MouseMove);
 	}
 	// unbind vertex buffer, free GPU memory
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
