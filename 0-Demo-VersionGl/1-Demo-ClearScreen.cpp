@@ -5,6 +5,7 @@
 #include "GLXtras.h"												// VertexAttribPointer, SetUniform
 #include "VecMat.h"													// vec2
 
+vec3 userColor(0, 1, 0);											// r, g, b 
 GLuint vBuffer = 0;													// GPU vertex buffer ID, valid if > 0
 GLuint program = 0;													// shader program ID, valid if > 0
 
@@ -24,8 +25,9 @@ const char *vertexShader = R"(
 const char *pixelShader = R"(
 	#version 130
 	out vec4 pColor;
+	uniform vec3 userColor = vec3(0, 1, 0);                         // default is green 
 	void main() {
-		pColor = vec4(0, 1, 0, 1);									// r, g, b, alpha
+		pColor = vec4(userColor, 1);  // rgb, alpha 
 	}
 )";
 
@@ -41,15 +43,31 @@ void Display() {
 	glUseProgram(program);											// use shader program
 	glBindBuffer(GL_ARRAY_BUFFER, vBuffer);							// enable GPU buffer
 	VertexAttribPointer(program, "point", 2, 0, (void *) 0);		// connect GPU buffer to vertex shader
+	SetUniform(program, "userColor", userColor);
 	glDrawArrays(GL_QUADS, 0, 4);									// 4 vertices (1 quad)
 //	glDrawArrays(GL_TRIANGLES, 0, 6);								// 6 vertices (2 triangles)
 	glFlush();														// flush OpenGL ops
+}
+
+void Keyboard(int key, bool press, bool shift, bool control) {
+	if (press && key == 'C') {
+		vec3 c;
+		printf("type r g b (range 0-1, no commas): ");
+		if (fscanf(stdin, "%f%f%f", &c.x, &c.y, &c.z) == 3) {
+			userColor = c;
+			char title[500];
+			sprintf(title, "Clear to (%g,%g,%g)", c.x, c.y, c.z);
+			glfwSetWindowTitle(w, title);
+		}
+		rewind(stdin);
+	}
 }
 
 int main() {														// application entry
 	w = InitGLFW(100, 100, winWidth, winHeight, "Clear to Green");
 	program = LinkProgramViaCode(&vertexShader, &pixelShader);		// build shader program
 	InitVertexBuffer();												// allocate GPU vertex buffer
+	RegisterKeyboard(Keyboard);										// callback for user key press 
 	while (!glfwWindowShouldClose(w)) {								// event loop
 		Display();
 		glfwSwapBuffers(w);											// double-buffer is default
