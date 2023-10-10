@@ -10,21 +10,20 @@
 
 GLuint vBuffer = 0; // GPU buffer ID
 GLuint program = 0; // GLSL shader program ID
-vec2 mouseWas, mouseNow; // rotation control 
 
-// the letter "L"
-float zWidth = -15.0;
+/** letter gemoetry */
+float letterDepth = -15.0;
 vec3 colors[] = {
 					{0.8, 0.2, 0.7}, {0.5, 0.9, 0.1}, {0.2, 0.6, 0.9}, {0.7, 0.3, 0.6}, {0.9, 0.7, 0.2}, {0.4, 0.1, 0.8},
 					{0.8, 0.2, 0.7}, {0.5, 0.9, 0.1}, {0.2, 0.6, 0.9}, {0.7, 0.3, 0.6}, {0.9, 0.7, 0.2}, {0.4, 0.1, 0.8}
 };
 vec3 points[] = {  // front                  back 
-					{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, zWidth},
-					{50.0f, 0.0f, 0.0f},{50.0f, 0.0f, zWidth},
-					{50.0f, 20.0f,0.0f}, {50.0f, 20.0f,zWidth},
-					{20.0f, 20.0f, 0.0f}, {20.0f, 20.0f, zWidth},
-					{0.0f, 80.0f, 0.0f}, {0.0f, 80.0f, zWidth},
-					{20.0f, 80.0f, 0.0f}, {20.0f, 80.0f, zWidth}
+					{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, letterDepth},
+					{50.0f, 0.0f, 0.0f},{50.0f, 0.0f, letterDepth},
+					{50.0f, 20.0f,0.0f}, {50.0f, 20.0f,letterDepth},
+					{20.0f, 20.0f, 0.0f}, {20.0f, 20.0f, letterDepth},
+					{0.0f, 80.0f, 0.0f}, {0.0f, 80.0f, letterDepth},
+					{20.0f, 80.0f, 0.0f}, {20.0f, 80.0f, letterDepth}
 };
 
 int nPoints = sizeof(points) / sizeof(vec3);
@@ -36,6 +35,8 @@ int triangles[][3] = {  // front   back
 };
 
 int nTriangles = sizeof(triangles) / (3 * sizeof(int));
+
+/** shaders */
 
 const char *vertexShader = R"(
 	#version 130
@@ -81,9 +82,10 @@ const char *pixelShader = R"(
 	}
 )";
 
-int winWidth = 800; 
-int winHeight = 800; 
 
+/** camera */
+int winWidth = 800;
+int winHeight = 800; 
 Camera camera(0, 0, winWidth, winHeight, vec3(15, -30, 0), vec3(0, 0, -5), 30); 
 
 void Display(GLFWwindow *w) {
@@ -172,6 +174,10 @@ void MouseWheel(float spin) {
 	camera.Wheel(spin, Shift()); 
 }
 
+void Resize(int width, int height) {
+	camera.Resize(width, height);
+}
+
 int main() {
 	// init window
 	GLFWwindow *w = InitGLFW(100, 100, 800, 800, "Shaded Letter");
@@ -186,7 +192,7 @@ int main() {
 		Display(w);
 		glfwSwapBuffers(w);
 		glfwPollEvents();
-		// mouse callback routines
+		RegisterResize(Resize);
 		RegisterMouseButton(MouseButton);
 		RegisterMouseMove(MouseMove);
 		RegisterMouseWheel(MouseWheel); 
