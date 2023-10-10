@@ -18,7 +18,7 @@ vec3 colors[] = {
 					{0.8, 0.2, 0.7}, {0.5, 0.9, 0.1}, {0.2, 0.6, 0.9}, {0.7, 0.3, 0.6}, {0.9, 0.7, 0.2}, {0.4, 0.1, 0.8},
 					{0.8, 0.2, 0.7}, {0.5, 0.9, 0.1}, {0.2, 0.6, 0.9}, {0.7, 0.3, 0.6}, {0.9, 0.7, 0.2}, {0.4, 0.1, 0.8}
 };
-vec3 points[] = {
+vec3 points[] = {  // front                  back 
 					{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, zWidth},
 					{50.0f, 0.0f, 0.0f},{50.0f, 0.0f, zWidth},
 					{50.0f, 20.0f,0.0f}, {50.0f, 20.0f,zWidth},
@@ -28,29 +28,56 @@ vec3 points[] = {
 };
 
 int nPoints = sizeof(points) / sizeof(vec3);
-int triangles[][3] = {{0,1,2}, {0,2,3}, {0,4,5}, { 0,3,5}};
+int triangles[][3] = {  // front   back 
+						{0,1,2}, {4,6,5},
+						{0,2,3}, {4,7,6},
+						{0,4,5}, {4,9,8},
+						{0,3,5}, {4,9,7}
+};
 
 int nTriangles = sizeof(triangles) / (3 * sizeof(int));
 
 const char *vertexShader = R"(
 	#version 130
-	uniform mat4 view; 
-	in vec2 point;
+	uniform mat4 modelview, persp; 
+	in vec3 point;
 	in vec3 color;
+	out vec3 vPoint; 
 	out vec3 vColor;
 	void main() {
-		gl_Position = view*vec4(point, 0, 1); // so elegant! 
-		vColor = color;
+		vPoint = (modelview*vec4(point, 1)).xyz;   // transformed to world space 
+		gl_Position = persp*vec4(vPoint, 1);       // transformed to perspective space 
+		vColor = color; 
 	}
 )";
 
 const char *pixelShader = R"(
 
 	#version 130
+	in vec3 vPoint;
 	in vec3 vColor;
 	out vec4 pColor;
+
 	void main() {
-		pColor = vec4(vColor, 1); // 1: fully opaque
+		uniform vec3 light = vec3(1, 1, 1); 
+		vec3 dx = dFdx(vPoint), dy = dFdy(vPoint);) // vPoint change along hor/vert raster
+		vec3 N = normalize(cross(dx, dy));     // unit-length surface normal 
+
+		// d, diffuse term calcuation 
+		vec3 L = normalize(lights-vPoint);     // unit-length light vector 
+		float d = abs(dot(N, L));         
+
+		vec3 E = normalize(vPoint);  // specular highlight 
+
+		vec3 R = reflect(L, N);          // reflection vector
+
+		float h = max(0, dot(R, E));        // highlight term 
+		float s = pow(h, 100);          // specular term 
+
+		uniform float amb = .1, dif = .8, spc =.7;  // ambient, diffuse, specular weights 
+
+		float intensity = min(1, amb+dif*d)+spc*s;  // weighted sum 
+		pColor = vec4(intensity*vColor, 1);     // opaque 
 	}
 )";
 
@@ -59,10 +86,13 @@ int winHeight = 800;
 
 Camera camera(0, 0, winWidth, winHeight, vec3(15, -30, 0), vec3(0, 0, -5), 30); 
 
-void Display() {
-	// rotate
-	mat4 view = RotateY(mouseNow.x) * RotateX(mouseNow.y); // compound transform 
-	SetUniform(program, "view", view);
+void Display(GLFWwindow *w) {
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+
+	SetUniform(program, "modelview", camera.modelview);
+	SetUniform(program, "persp", camera.persp);
+
 	// clear background
 	glClearColor(1, 1, 1, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -70,14 +100,14 @@ void Display() {
 	glUseProgram(program);
 	glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
 	// connect GPU point and color buffers to shader inputs
-	VertexAttribPointer(program, "point", 2, 0, (void *) 0);
+	VertexAttribPointer(program, "point", 3, 0, (void *) 0);
 	VertexAttribPointer(program, "color", 3, 0, (void *) sizeof(points));
 	// render three vertices as one triangle
 	int nVertices = sizeof(triangles) / sizeof(int);
 	glDrawElements(GL_TRIANGLES, nTriangles*3, GL_UNSIGNED_INT, triangles);
 
 	// test
-	if (true) { // set false for HW turn-n 
+	if (false) { // set false for HW turn-n 
 		UseDrawShader(camera.fullview);
 		// draw/label vertices in yellow 
 		for (int i = 0; i < nPoints; i++) {
@@ -96,6 +126,10 @@ void Display() {
 			Text(c, camera.fullview, vec3(0, 1, 1), 10, "t%i", i);
 		}
 	}
+
+	glDisable(GL_DEPTH_TEST);
+	if (!Shift() && glfwGetMouseButton(w, GLFW_MOUSE_BUTTON_LEFT))
+		camera.arcball.Draw(Control());
 
 	glFlush();
 }
@@ -149,7 +183,7 @@ int main() {
 	BufferVertices();
 	// event loop
 	while (!glfwWindowShouldClose(w)) {
-		Display();
+		Display(w);
 		glfwSwapBuffers(w);
 		glfwPollEvents();
 		// mouse callback routines
