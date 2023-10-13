@@ -146,9 +146,6 @@
     <ClCompile Include="..\Lib\Widgets.cpp" />
     <ClCompile Include="Assn-3-Shade3dLetter.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <Library Include="..\Lib\glfw3.lib" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
