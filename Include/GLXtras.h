@@ -4,7 +4,7 @@
 #define GL_XTRAS_HDR
 
 #include "glad.h"
-#include <glfw3.h>
+#include <GLFW/glfw3.h>
 #include "VecMat.h"
 
 // GLFW

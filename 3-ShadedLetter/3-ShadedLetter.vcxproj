@@ -72,6 +72,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LibraryPath>C:\Users\12066\Graphics\Apps\Lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Users\12066\Graphics\Apps\Include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -114,6 +115,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>glfw3.lib;opengl32.lib;glu32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>MSVCRT</IgnoreSpecificDefaultLibraries>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -133,12 +135,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Lib\Camera.cpp" />
+    <ClCompile Include="..\Lib\Draw.cpp" />
     <ClCompile Include="..\Lib\glad.c" />
     <ClCompile Include="..\Lib\GLXtras.cpp" />
+    <ClCompile Include="..\Lib\IO.cpp" />
+    <ClCompile Include="..\Lib\Letters.cpp" />
+    <ClCompile Include="..\Lib\Quaternion.cpp" />
+    <ClCompile Include="..\Lib\Text.cpp" />
+    <ClCompile Include="..\Lib\Widgets.cpp" />
     <ClCompile Include="Assn-3-Shade3dLetter.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <Library Include="..\Lib\glfw3.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
