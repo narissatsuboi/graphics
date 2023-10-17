@@ -42,6 +42,7 @@ mat4 Viewport() {
 	glGetFloatv(GL_VIEWPORT, vp);
 	float x = vp[0], y = vp[1], w = vp[2], h = vp[3];
 	return mat4(vec4(w/2,0,0,x+w/2), vec4(0,h/2,0,y+h/2), vec4(0,0,1,0), vec4(0,0,0,1));
+		// **** something wrong here?
 }
 
 mat4 ScreenMode() {
@@ -110,48 +111,76 @@ float ScreenD(int x, int y, vec3 p, mat4 m, float *zscreen) {
 	return sqrt(ScreenDSq(x, y, p, m, zscreen));
 }
 
+bool UnProject(float xscreen, float yscreen, float zscreen, mat4 &fullview, vec3 &p) {
+	// from https://registry.khronos.org/OpenGL-Refpages/gl2.1/xhtml/gluUnProject.xml
+	// to compute the coordinates (objX objY objZ), gluUnProject multiplies
+	// the normalized device coordinates by the inverse of model*proj:
+	//	  [ objX ]               [ (2*winx-vp[0])/vp[2]-1 ]
+	//	  | objY |  =  [PM]-1    | (2*winy-vp[1])/vp[3]-1 |
+	//	  | objZ |               |             (2*winz)-1 |
+	//	  [ objW ]               [                      1 ]
+	vec4 vp = VP();
+	mat4 inv;
+	if (!InverseMatrix4x4(&fullview[0][0], &inv[0][0])) {
+		printf("can't unproject\n");
+		return false;
+	}
+	vec4 ndc(2.f*(xscreen-vp[0])/vp[2]-1.f, 2.f*(yscreen-vp[1])/vp[3]-1.f, 2*zscreen-1.f, 1.f);
+	vec4 q = inv*ndc;
+	p = vec3(q.x/q.w, q.y/q.w, q.z/q.w);
+	return true;
+}
+
 void ScreenRay(float xscreen, float yscreen, mat4 modelview, mat4 persp, vec3 &p, vec3 &v) {
 	// compute ray from p in direction v; p is transformed eyepoint, xscreen, yscreen determine v
 	int vp[4];
 	glGetIntegerv(GL_VIEWPORT, vp);
 	// origin of ray is always eye (translated origin)
 	p = vec3(modelview[0][3], modelview[1][3], modelview[2][3]);
+	mat4 fullview = persp*modelview;
+	vec3 p1, p2;
+	bool ok = UnProject(xscreen, yscreen, .25f, fullview, p1) &&
+	          UnProject(xscreen, yscreen, .50f, fullview, p2);
+	v = normalize(p2-p1);
 	// create transposes for gluUnproject
-	double tpersp[4][4], tmodelview[4][4], a[3], b[3];
-	for (int i = 0; i < 4; i++)
-		for (int j = 0; j < 4; j++) {
-			tmodelview[i][j] = modelview[j][i];
-			tpersp[i][j] = persp[j][i];
-		}
+//	double tpersp[4][4], tmodelview[4][4], a[3], b[3];
+//	for (int i = 0; i < 4; i++)
+//		for (int j = 0; j < 4; j++) {
+//			tmodelview[i][j] = modelview[j][i];
+//			tpersp[i][j] = persp[j][i];
+//		}
 	// un-project two screen points of differing depth to determine v
-	if (gluUnProject(xscreen, yscreen, .25, (const double*) tmodelview, (const double*) tpersp, vp, &a[0], &a[1], &a[2]) == GL_FALSE)
-		printf("UnProject false\n");
-	if (gluUnProject(xscreen, yscreen, .50, (const double*) tmodelview, (const double*) tpersp, vp, &b[0], &b[1], &b[2]) == GL_FALSE)
-		printf("UnProject false\n");
-	v = normalize(vec3((float) (b[0]-a[0]), (float) (b[1]-a[1]), (float) (b[2]-a[2])));
+//	if (gluUnProject(xscreen, yscreen, .25, (const double*) tmodelview, (const double*) tpersp, vp, &a[0], &a[1], &a[2]) == GL_FALSE)
+//		printf("UnProject false\n");
+//	if (gluUnProject(xscreen, yscreen, .50, (const double*) tmodelview, (const double*) tpersp, vp, &b[0], &b[1], &b[2]) == GL_FALSE)
+//		printf("UnProject false\n");
+//	v = normalize(vec3((float) (b[0]-a[0]), (float) (b[1]-a[1]), (float) (b[2]-a[2])));
 }
 
 void ScreenLine(float xscreen, float yscreen, mat4 modelview, mat4 persp, vec3 &p1, vec3 &p2) {
 	// compute 3D world space line, given by p1 and p2, that transforms
 	// to a line perpendicular to the screen at (xscreen, yscreen)
-	double tpersp[4][4], tmodelview[4][4], a[3], b[3];
+	mat4 fullview = persp*modelview;
+	bool ok = UnProject(xscreen, yscreen, .25f, fullview, p1) &&
+	          UnProject(xscreen, yscreen, .50f, fullview, p2);
+	// double tpersp[4][4], tmodelview[4][4], a[3], b[3];
 	// get viewport
-	int vp[4];
-	glGetIntegerv(GL_VIEWPORT, vp);
+	// int vp[4];
+	// glGetIntegerv(GL_VIEWPORT, vp);
 	// create transposes
-	for (int i = 0; i < 4; i++)
-		for (int j = 0; j < 4; j++) {
-			tmodelview[i][j] = modelview[j][i];
-			tpersp[i][j] = persp[j][i];
-		}
-	if (gluUnProject(xscreen, yscreen, .25, (const double*) tmodelview, (const double*) tpersp, vp, &a[0], &a[1], &a[2]) == GL_FALSE)
-		printf("UnProject false\n");
-	if (gluUnProject(xscreen, yscreen, .50, (const double*) tmodelview, (const double*) tpersp, vp, &b[0], &b[1], &b[2]) == GL_FALSE)
-		printf("UnProject false\n");
-		// alternatively, a second point can be determined by transforming the origin by the inverse of modelview
-		// this would yield in world space the camera location, through which all view lines pass
-	p1 = vec3(static_cast<float>(a[0]), static_cast<float>(a[1]), static_cast<float>(a[2]));
-	p2 = vec3(static_cast<float>(b[0]), static_cast<float>(b[1]), static_cast<float>(b[2]));
+	// for (int i = 0; i < 4; i++)
+	// 	for (int j = 0; j < 4; j++) {
+	// 		tmodelview[i][j] = modelview[j][i];
+	// 		tpersp[i][j] = persp[j][i];
+	// 	}
+	// if (gluUnProject(xscreen, yscreen, .25, (const double*) tmodelview, (const double*) tpersp, vp, &a[0], &a[1], &a[2]) == GL_FALSE)
+	// 	printf("UnProject false\n");
+	// if (gluUnProject(xscreen, yscreen, .50, (const double*) tmodelview, (const double*) tpersp, vp, &b[0], &b[1], &b[2]) == GL_FALSE)
+	// 	printf("UnProject false\n");
+	// 	alternatively, a second point can be determined by transforming the origin by the inverse of modelview
+	// 	this would yield in world space the camera location, through which all view lines pass
+	// p1 = vec3(static_cast<float>(a[0]), static_cast<float>(a[1]), static_cast<float>(a[2]));
+	// p2 = vec3(static_cast<float>(b[0]), static_cast<float>(b[1]), static_cast<float>(b[2]));
 }
 
 bool FrontFacing(vec3 base, vec3 vec, mat4 view) {
@@ -273,6 +302,8 @@ const char *drawPShader = R"(
 	void main() {
 		// GL_POINT_SMOOTH deprecated, so calc here
 		// needs GL_POINT_SPRITE or 0x8861 enabled
+		if (opacity < 1 && gl_Color.a < 1)
+			discard;
 		float o = opacity;
 		if (fadeToCenter)
 			o *= Fade(DistanceToCenter());
@@ -292,13 +323,17 @@ const char *drawPShader = R"(
 )";
 #endif
 
+mat4 GetDrawView() { return drawView; }
+void SetDrawView(mat4 m) { drawView = m; }
+
 GLuint UseDrawShader() {
 	int was = 0;
 	glGetIntegerv(GL_CURRENT_PROGRAM, &was);
 	bool init = !drawShader;
 	if (init) drawShader = LinkProgramViaCode(&drawVShader, &drawPShader);
 	glUseProgram(drawShader);
-	if (init) SetUniform(drawShader, "view", mat4());
+	if (init) drawView = mat4();
+	SetUniform(drawShader, "view", drawView);
 	return was;
 }
 
@@ -308,18 +343,6 @@ GLuint UseDrawShader(mat4 viewMatrix) {
 	drawView = viewMatrix;
 	return was;
 }
-
-/* Defaults
-
-void SetDefaultDisplay(vec3 col) {
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glEnable(GL_LINE_SMOOTH);
-	glEnable(GL_MULTISAMPLE);
-	glEnable(GL_DEPTH_TEST);
-	glClearColor(col.x, col.y, col.z, 1);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-} */
 
 // Disks
 
@@ -586,12 +609,12 @@ void ArrowV(vec3 base, vec3 v, mat4 modelview, mat4 persp, vec3 col, float lineW
 
 // Cylinders
 
-const char *vShader = R"(
+const char *cylVShader = R"(
 	#version 410 core
 	void main() { gl_Position = vec4(0); }
 )";
 
-const char *tcShader = R"(
+const char *cylTCShader = R"(
 	#version 410 core
 	layout (vertices = 4) out;
 	void main() {
@@ -603,7 +626,7 @@ const char *tcShader = R"(
 	}
 )";
 
-const char *teShader = R"(
+const char *cylTEShader = R"(
 	#version 410 core
 	layout (quads, equal_spacing, ccw) in;
 	uniform vec3 p1;
@@ -629,7 +652,7 @@ const char *teShader = R"(
 	}
 )";
 
-const char *pShader = R"(
+const char *cylPShader = R"(
 	#version 410 core //130
 	in vec3 tePoint;
 	in vec3 teNormal;
@@ -652,7 +675,7 @@ GLuint cylinderShader = 0;
 
 void Cylinder(vec3 p1, vec3 p2, float r1, float r2, mat4 modelview, mat4 persp, vec4 color) {
 	if (!cylinderShader)
-		cylinderShader = LinkProgramViaCode(&vShader, &tcShader, &teShader, NULL, &pShader);
+		cylinderShader = LinkProgramViaCode(&cylVShader, &cylTCShader, &cylTEShader, NULL, &cylPShader);
 	//	cylinderShader = LinkProgramViaCode(&vShader, NULL, &teShader, NULL, &pShader);
 	glUseProgram(cylinderShader);
 	SetUniform(cylinderShader, "modelview", modelview);
@@ -673,7 +696,7 @@ void Cylinder(vec3 p1, vec3 p2, float r1, float r2, mat4 modelview, mat4 persp, 
 
 GLuint GetCylinderShader() {
 	if (!cylinderShader)
-		cylinderShader = LinkProgramViaCode(&vShader, &tcShader, &teShader, NULL, &pShader);
+		cylinderShader = LinkProgramViaCode(&cylVShader, &cylTCShader, &cylTEShader, NULL, &cylPShader);
 	return cylinderShader;
 }
 
@@ -726,7 +749,7 @@ const char *triGShaderCode = R"(
 		hc = abs(b*sin(alpha));
 		// send triangle vertices and edge distances
 		for (int i = 0; i < 3; i++) {
-		    gEdgeDistance = i==0? vec3(ha, 0, 0) : i==1? vec3(0, hb, 0) : vec3(0, 0, hc);
+			gEdgeDistance = i==0? vec3(ha, 0, 0) : i==1? vec3(0, hb, 0) : vec3(0, 0, hc);
 			gColor = vColor[i];
 			gl_Position = gl_in[i].gl_Position;
 			EmitVertex();

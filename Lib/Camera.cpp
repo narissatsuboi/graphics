@@ -74,7 +74,13 @@ void Camera::Set(int scrnX, int scrnY, int scrnW, int scrnH) {
 	modelview = Translate(tran)*rot;
 	fullview = persp*modelview;
 	float minS = (float) (scrnW < scrnH? scrnW : scrnH);
+#ifdef __APPLE__
+	arcball.SetCamera(&this->rot, 2*vec2((float) (scrnX+scrnW/2), (float) (scrnY+scrnH/2)), minS-100);
+		// **** above probably wrong but this proc mostly deprecated
+#else
 	arcball.SetCamera(&this->rot, vec2((float) (scrnX+scrnW/2), (float) (scrnY+scrnH/2)), minS/2-50);
+		// **** scrnX relevant?
+#endif
 };
 
 void Camera::Set(int scrnX, int scrnY, int scrnW, int scrnH, mat4 rot, vec3 tran, float fov, float nearDist, float farDist) {
@@ -89,8 +95,12 @@ void Camera::Set(int scrnX, int scrnY, int scrnW, int scrnH, mat4 rot, vec3 tran
 	modelview = Translate(tran)*rot;
 	fullview = persp*modelview;
 	float minS = (float) (scrnW < scrnH? scrnW : scrnH);
+#ifdef __APPLE__
+	arcball.SetCamera(&this->rot, vec2((float) scrnW, (float) scrnH)*1.5f, minS-100);
+//	arcball.SetCamera(&this->rot, vec2((float) scrnW, (float) scrnH), minS-100);
+#else
 	arcball.SetCamera(&this->rot, vec2((float) (scrnW/2), (float) (scrnH/2)), minS/2-50);
-//	arcball.SetCamera(&this->rot, vec2((float) (scrnW/2), (float) (scrnH/2)), minS/2-50);
+#endif
 };
 
 void Camera::Set(int *vp, mat4 rot, vec3 tran, float fov, float nearDist, float farDist) {
@@ -141,7 +151,11 @@ void Camera::Resize(int width, int height) {
 	aspectRatio = (float) width/height;
 	persp = Perspective(fov, aspectRatio, nearDist, farDist);
 	fullview = persp*modelview;
+#ifdef __APPLE__
+	arcball.SetCamera(&rot, vec2((float) width, (float) height)*1.5f, (float) (width < height? width : height)-100);
+#else
 	arcball.SetCamera(&rot, vec2((float) width, (float) height)/2, (float) (width < height? width : height)/2-50);
+#endif
 }
 
 void Camera::SetSpeed(float tranS) { tranSpeed = tranS; }
