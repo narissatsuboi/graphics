@@ -4,114 +4,122 @@
 #include <glfw3.h>
 #include "GLXtras.h"
 #include "VecMat.h"
-#include "Draw.h"
 #include "Text.h"
 #include "Camera.h"
+#include "Draw.h"  // ScreenD, Star 
+#include "IO.h"   // ReadTexture 
+#include "Widgets.h" // Mover 
 
 GLuint vBuffer = 0; // GPU buffer ID
 GLuint program = 0; // GLSL shader program ID
 
+/** globals ************************************************************************************/
 
-bool highlight = true; 
-
-/** letter gemoetry */
-vec3 colors[] = {
-					{0.8f, 0.2f, 0.7f}, {0.5f, 0.9f, 0.1f}, {0.2f, 0.6f, 0.9f}, {0.7f, 0.3f, 0.6f}, {0.9f, 0.7f, 0.2f}, {0.4f, 0.1f, 0.8f},
-					{0.8f, 0.2f, 0.7f}, {0.5f, 0.9f, 0.1f}, {0.2f, 0.6f, 0.9f}, {0.7f, 0.3f, 0.6f}, {0.9f, 0.7f, 0.2f}, {0.4f, 0.1f, 0.8f}
-};
-
+/** 
+	letter geometry globals 
+*/
 float zDepth = -15.0f;
 
-vec3 points[] = {
-	{0.0f, 0.0f, 0.0f},
-	{0.0f, 80.0f, 0.0f},
-	{50.0f, 0.0f, 0.0f},
-	{50.0f, 20.0f, 0.0f},
-	{20.0f, 20.0f, 0.0f},
-	{20.0f, 80.0f, 0.0f},
-	{0.0f, 0.0f, zDepth},
-	{0.0f, 80.0f, zDepth},
-	{50.0f, 0.0f, zDepth},
-	{50.0f, 20.0f, zDepth},
-	{20.0f, 20.0f, zDepth},
-	{20.0f, 80.0f, zDepth}
+vec3 points[] = { 
+	{0.0f, 0.0f, 0.0f},{0.0f, 80.0f, 0.0f},{50.0f, 0.0f, 0.0f},{50.0f, 20.0f, 0.0f},{20.0f, 20.0f, 0.0f},{20.0f, 80.0f, 0.0f},
+	{0.0f, 0.0f, zDepth},{0.0f, 80.0f, zDepth},{50.0f, 0.0f, zDepth},{50.0f, 20.0f, zDepth},{20.0f, 20.0f, zDepth},{20.0f, 80.0f, zDepth}
 };
-
 
 const int nPoints = sizeof(points) / sizeof(vec3);
 
 int triangles[][3] = {
-	{0, 2, 3},  // front 
-	{0, 3, 4},
-	{0, 4, 5}, 
-	{0, 1, 5},  
-	{6, 9, 8}, // back 
-	{6, 10, 9},
-	{6, 11, 10},
-	{6, 11, 7},
-	{0, 7, 6}, // edge triangles
-	{0, 1, 7},
-	{4, 10, 11},
-	{4, 11, 5},
-	{2, 8, 9},
-	{2, 9, 3},
-	{1, 5, 11},
-	{1, 7, 11},
-	{0, 2, 8},
-	{0, 6, 8},
-	{4, 10, 9},
-	{4, 3, 9}
+	{0, 2, 3},{0, 3, 4},{0, 4, 5}, {0, 1, 5},  {6, 9, 8}, {6, 10, 9},{6, 11, 10},{6, 11, 7},{0, 7, 6}, {0, 1, 7},
+	{4, 10, 11},{4, 11, 5},{2, 8, 9},{2, 9, 3},{1, 5, 11},{1, 7, 11},{0, 2, 8},{0, 6, 8},{4, 10, 9},{4, 3, 9}
 };
-
 
 int nTriangles = sizeof(triangles) / (3 * sizeof(int));
 
-/** shaders */
 
+/**
+	texture globals 
+*/
+vec2 uvs[nPoints]; 
+const char* textureFilename = "texture_img.jpg";
+GLuint textureName = 0;  // id for texture image, set by ReadTexture 
+int textureUnit = 0;    // id for GPU image buffer, may be freely set 
+
+/**
+	camera globals
+*/
+int winWidth = 800;
+int winHeight = 800;
+Camera camera(0, 0, winWidth, winHeight, vec3(15, -30, 0), vec3(0, 0, -5), 30);
+
+/**
+	lighting globals
+*/
+vec3 lights[] = { {.5, 0, 1}, {1, 1, 0} };  // movable lights 
+const int nLights = sizeof(lights) / sizeof(vec3);
+Mover mover;         // to move light 
+void* picked = NULL; // user selection (&mover or null/camera) 
+
+/** methods **********************************************************************************/
+
+/** 
+	texture methods 
+*/
+void SetUvs() {
+	vec3 min, max;
+	Bounds(points, nPoints, min, max);
+	vec3 dif(max - min);
+	for (int i = 0; i < nPoints; i++)
+		uvs[i] = vec2((points[i].x - min.x) / dif.x, (points[i].y - min.y) / dif.y);
+}
+
+/** 
+	shaders 
+*/
 const char *vertexShader = R"(
 	#version 130
 	uniform mat4 modelview, persp; 
 	in vec3 point;
-	in vec3 color;
 	out vec3 vPoint; 
-	out vec3 vColor;
+	in vec2 uv; 
+	out vec2 vUv; 
 	void main() {
-		vPoint = (modelview*vec4(point, 1)).xyz;   // transformed to world space 
-		gl_Position = persp*vec4(vPoint, 1);       // transformed to perspective space 
-		vColor = color; 
+		vPoint = (modelview*vec4(point, 1)).xyz;   
+		gl_Position = persp*vec4(vPoint, 1);       
+		vUv = uv; 
 	}
 )";
 
 const char *pixelShader = R"(
 	#version 130
 	in vec3 vPoint;
-	in vec3 vColor;
+	in vec2 vUv; 
 	out vec4 pColor;
-	uniform vec3 light = vec3(1, 1, 1); 
-	uniform float amb = .1, dif = .8, spc =.7;  // ambient, diffuse, specular weights 
+
+	uniform int nLights = 0; 
+	uniform vec3 lights[20];
+	uniform sampler2D textureImage; 
+	uniform float amb = .1, dif = .8, spc =.7; 
 	uniform bool highlights = true; 	
 
 	void main() {
 		
-		vec3 dx = dFdx(vPoint), dy = dFdy(vPoint);  // vPoint change along hor/vert raster
-		vec3 N = normalize(cross(dx, dy));          // unit-length surface normal 
-		vec3 L = normalize(light-vPoint);           // unit-length light vector 
-		float d = abs(dot(N, L));         
-
-		vec3 E = normalize(vPoint);                 // specular highlight 
-		vec3 R = reflect(L, N);                     // reflection vector
-		float h = max(0, dot(R, E));                // highlight term 
-		float s = pow(h, 100);                      // specular term 
-		float intensity = min(1, amb+dif*d)+spc*s;  // weighted sum 
-
-		pColor = vec4(intensity*vColor, 1);         // opaque 
+		vec3 dx = dFdx(vPoint), dy = dFdy(vPoint);  
+		vec3 N = normalize(cross(dx, dy));          
+		vec3 E = normalize(vPoint);                 
+                 
+		// init diffuse and spec to 0, increment along nLights 
+		float d = 0.0; float s = 0.0;                  
+        for (int i = 0; i < nLights; i++) {
+            vec3 L = normalize(lights[i] - vPoint);
+            d += abs(dot(N, L)); 
+            vec3 R = reflect(L, N);                       
+            float h = max(0.0, dot(R, E));               
+            s += pow(h, 100.0); 
+        }
+		float intensity = min(1, amb+dif*d)+spc*s;  
+		vec3 col = texture(textureImage, vUv).rgb; 
+		pColor = vec4(intensity*col, 1);    
 	}
 )";
-
-/** camera */
-int winWidth = 800;
-int winHeight = 800; 
-Camera camera(0, 0, winWidth, winHeight, vec3(15, -30, 0), vec3(0, 0, -5), 30); 
 
 void Display(GLFWwindow *w) {
 
@@ -129,34 +137,32 @@ void Display(GLFWwindow *w) {
 	SetUniform(program, "modelview", camera.modelview);
 	SetUniform(program, "persp", camera.persp);
 
-	// connect GPU point and color buffers to shader inputs
+	// connect GPU point and uv coordinates to shader inputs
 	VertexAttribPointer(program, "point", 3, 0, (void *) 0);
-	VertexAttribPointer(program, "color", 3, 0, (void *) sizeof(points));
+	VertexAttribPointer(program, "uv", 2, 0, (void*)sizeof(points));
+
+	// Inform pixel shade which image buffer to read from 
+	SetUniform(program, "textureImage", textureUnit);
+
+	// enable GPU buffer of uv coordinates
+	glBindTexture(GL_TEXTURE_2D, textureName);
+	glActiveTexture(GL_TEXTURE0 + textureUnit);
+
+	// transform lights, send to GPU 
+	vec3 xLights[nLights];
+	for (int i = 0; i < nLights; i++)
+		xLights[i] = Vec3(camera.modelview * vec4(lights[i], 1));
+	SetUniform(program, "nLights", nLights);
+	SetUniform3v(program, "lights", nLights, (float*)xLights);
 
 	// render three vertices as one triangle
 	glDrawElements(GL_TRIANGLES, nTriangles*3, GL_UNSIGNED_INT, triangles);
 
-	// test connectivity
-	if (false) { // set false for HW turn-n 
-		UseDrawShader(camera.fullview);
-
-		// draw/label vertices in yellow 
-		for (int i = 0; i < nPoints; i++) {
-			vec3 p = points[i];
-			Disk(p, 8, vec3(0.8, 0.2, 0.7));
-			Text(p, camera.fullview, vec3(0.8, 0.2, 0.7), 10, " v%i", i);
-		}
-		// draw/label triangles in cyan 
-		int nTriangles = sizeof(triangles) / (3 * sizeof(int));
-		for (int i = 0; i < nTriangles; i++) {
-			int3 t = triangles[i];
-			vec3 p1 = points[t.i1], p2 = points[t.i2], p3 = points[t.i3], c = (p1 + p2 + p3) / 3;
-			Line(p1, p2, 3, vec3(0, 1, 1));
-			Line(p2, p3, 3, vec3(0, 1, 1));
-			Line(p3, p1, 3, vec3(0, 1, 1));
-			Text(c, camera.fullview, vec3(0, 1, 1), 10, "t%i", i);
-		}
-	}	glDisable(GL_DEPTH_TEST);
+	// draw lights as disks 
+	UseDrawShader(camera.fullview);
+	// draw lights 
+	for (int i = 0; i < nLights; i++)
+		Star(lights[i], 8, vec3(1, .8f, 0), vec3(0, 0, 1));
 
 	if (!Shift() && glfwGetMouseButton(w, GLFW_MOUSE_BUTTON_LEFT))
 		camera.arcball.Draw(Control());
@@ -169,12 +175,15 @@ void BufferVertices() {
 	glGenBuffers(1, &vBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
 	// allocate
-	int sPoints = sizeof(points), sColors = sizeof(colors);
-	glBufferData(GL_ARRAY_BUFFER, sPoints+sColors, NULL, GL_STATIC_DRAW);
+	int sUvs = nPoints * sizeof(vec2);
+	int sPoints = sizeof(points);
+	
+	glBufferData(GL_ARRAY_BUFFER, sPoints + sUvs, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, sPoints, sUvs, uvs);
+
 	// cppy points to beginning of buffer, for length of points array
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sPoints, points);
-	// copy colors, starting at end of points buffer, for length of colors array
-	glBufferSubData(GL_ARRAY_BUFFER, sPoints, sColors, colors);
+
 }
 
 void NormalizePoints(float s = 1) {
@@ -187,15 +196,30 @@ void NormalizePoints(float s = 1) {
 		points[i] = scale * (points[i] - center);
 }
 
+/**
+	mouse
+*/
 void MouseButton(float x, float y, bool left, bool down) {
-	if (left && down)
-		camera.Down(x, y, Shift(), Control());
-	else camera.Up();
+	picked = NULL;
+
+	if (picked == NULL) {
+		picked = &camera;
+		camera.Down((int)x, (int)y, Shift(), Control());
+	}
+
+	for (int i = 0; i < nLights; i++) {
+		if (MouseOver(x, y, lights[i], camera.fullview)) {
+			picked = &mover;
+			mover.Down(&lights[i], (int)x, (int)y, camera.modelview, camera.persp);
+		}
+	}
 }
 
 void MouseMove(float x, float y, bool leftDown, bool rightDown) {
-	if (leftDown)
-		camera.Drag(x, y); 
+	if (picked == &mover)
+		mover.Drag((int)x, (int)y, camera.modelview, camera.persp);
+	if (picked == &camera)
+		camera.Drag((int)x, (int)y);
 }
 
 void MouseWheel(float spin) {
@@ -206,16 +230,42 @@ void Resize(int width, int height) {
 	camera.Resize(width, height);
 }
 
+
+/**
+	IO
+*/
+void WriteObjFile(const char* filename) {
+	FILE* file = fopen(filename, "w");
+	if (file) {
+		fprintf(file, "\n# %i vertices\n", nPoints);
+		for (int i = 0; i < nPoints; i++)
+			fprintf(file, "v %f %f %f \n", points[i].x, points[i].y, points[i].z);
+		fprintf(file, "\n# %i textures\n", nPoints);
+		for (int i = 0; i < nPoints; i++)
+			fprintf(file, "vt %f %f \n", uvs[i].x, uvs[i].y);
+		fprintf(file, "\n# %i triangles\n", nTriangles);
+		for (int i = 0; i < nTriangles; i++)
+			fprintf(file, "f %i %i %i \n",
+				1 + triangles[i][0], 1 + triangles[i][1], 1 + triangles[i][2]);
+		fclose(file);
+	}
+}
+
+
 int main() {
-	// init window
+	
+	// write to file 
+	const char* fileName = "output.obj";
+	WriteObjFile(fileName);
+
 	GLFWwindow *w = InitGLFW(100, 100, 800, 800, "Shaded Letter");
-	// build shader program
-	program = LinkProgramViaCode(&vertexShader, &pixelShader);
-	// fit the letter
-	NormalizePoints(0.8);
-	// allocate GPU vertex memory
-	BufferVertices();
-	// event loop
+	
+	program = LinkProgramViaCode(&vertexShader, &pixelShader);  // build shader program
+	textureName = ReadTexture(textureFilename);  // read and store texture img in GPU
+	SetUvs();                                    // init uv coords 
+	NormalizePoints(0.8);                        // fit the letter
+	BufferVertices();                            // allocate GPU vertex memory
+
 	while (!glfwWindowShouldClose(w)) {
 		Display(w);
 		glfwSwapBuffers(w);
@@ -225,6 +275,7 @@ int main() {
 		RegisterMouseMove(MouseMove);
 		RegisterMouseWheel(MouseWheel); 
 	}
+
 	// unbind vertex buffer, free GPU memory
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glDeleteBuffers(1, &vBuffer);
