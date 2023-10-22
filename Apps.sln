@@ -11,6 +11,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "3-ShadedLetter", "3-ShadedL
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "4-Texture3dLetter", "4-TexturedLetter\4-Texture3dLetter.vcxproj", "{79494982-0A54-4DCE-860F-8486C17598BE}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "5-SmoothMesh", "5-SmoothMesh\5-SmoothMesh.vcxproj", "{0E352A57-BD29-4D24-BC13-4748CF5435E9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -50,6 +52,14 @@ Global
 		{79494982-0A54-4DCE-860F-8486C17598BE}.Release|x64.Build.0 = Release|x64
 		{79494982-0A54-4DCE-860F-8486C17598BE}.Release|x86.ActiveCfg = Release|Win32
 		{79494982-0A54-4DCE-860F-8486C17598BE}.Release|x86.Build.0 = Release|Win32
+		{0E352A57-BD29-4D24-BC13-4748CF5435E9}.Debug|x64.ActiveCfg = Debug|x64
+		{0E352A57-BD29-4D24-BC13-4748CF5435E9}.Debug|x64.Build.0 = Debug|x64
+		{0E352A57-BD29-4D24-BC13-4748CF5435E9}.Debug|x86.ActiveCfg = Debug|Win32
+		{0E352A57-BD29-4D24-BC13-4748CF5435E9}.Debug|x86.Build.0 = Debug|Win32
+		{0E352A57-BD29-4D24-BC13-4748CF5435E9}.Release|x64.ActiveCfg = Release|x64
+		{0E352A57-BD29-4D24-BC13-4748CF5435E9}.Release|x64.Build.0 = Release|x64
+		{0E352A57-BD29-4D24-BC13-4748CF5435E9}.Release|x86.ActiveCfg = Release|Win32
+		{0E352A57-BD29-4D24-BC13-4748CF5435E9}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
