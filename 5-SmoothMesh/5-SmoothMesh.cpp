@@ -1,4 +1,4 @@
-// SmoothMesh.cpp: texture-map 3D letter
+// SmoothMesh.cpp: texture-map facet or smooth shaded 3D letter
 
 #include <vector>
 #include <glad.h>
@@ -27,10 +27,10 @@ vector<int3> triangles;     // triplets of vertex indices
 GLuint vBuffer = 0, program = 0;
 
 // obj file
-const char* objFilename = "pumpkin_scan.obj";
+const char* objFilename = "horse.obj";
 
 // texture image
-const char *texFilename = "pumpkin_BaseColor.png";
+const char *texFilename = "horse_base.png";
 GLuint textureName = 0;
 int textureUnit = 0;
 
@@ -71,12 +71,12 @@ const char *pixelShader = R"(
 	uniform int nLights = 0;
 	uniform vec3 lights[20];
 	uniform bool faceted = false; 
+	
 	uniform float amb = .1, dif = .8, spc =.7;					// ambient, diffuse, specular
 	void main() {
 
 		vec3 dx = dFdx(vPoint), dy = dFdy(vPoint);				// change in vPoint in horiz/vert directions
-		vec3 N = faceted ? normalize(cross(dx, dy)) : vNormal;		
-
+		vec3 N = faceted ? normalize(cross(dx, dy)) : vNormal;	
 		float d = 0, s = 0;
 		vec3 E = normalize(vPoint);								// eye vector
 		for (int i = 0; i < nLights; i++) {
@@ -101,16 +101,12 @@ void Display(GLFWwindow *w) {
 	// init shader program, connect GPU buffer to vertex shader
 	glUseProgram(program);
 	glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
-
-	// [point, uv, normal] = 0, 12, 20 (size of float  = 4) 
-	GLintptr vertex_position_offset = 0 * sizeof(float); 
-	GLintptr vertex_texcoord_offset = 3 * sizeof(float);
-	GLintptr vertex_normal_offset = 5 * sizeof(float);
-
-	VertexAttribPointer(program, "point", 3, 0, (GLvoid*)vertex_position_offset);
-	VertexAttribPointer(program, "uv", 2, 0, (GLvoid*)vertex_texcoord_offset);
-	VertexAttribPointer(program, "normal", 3, 0, (GLvoid*)vertex_normal_offset);
-
+	// [point, uv, normal]
+	const size_t pointsOffset = points.size() * sizeof(vec3);
+	const size_t pointsUvOffeset = pointsOffset + uvs.size() * sizeof(vec2);
+	VertexAttribPointer(program, "point", 3, 0, (GLvoid *) 0);
+	VertexAttribPointer(program, "uv", 2, 0, (GLvoid *) pointsOffset);
+	VertexAttribPointer(program, "normal", 3, 0, (GLvoid *) pointsUvOffeset);
 	// update matrices
 	SetUniform(program, "modelview", camera.modelview);
 	SetUniform(program, "persp", camera.persp);
@@ -127,29 +123,7 @@ void Display(GLFWwindow *w) {
 	glActiveTexture(GL_TEXTURE0+textureUnit);
 	SetUniform(program, "textureImage", textureUnit);
 	// render
-	glDrawElements(GL_TRIANGLES, (GLuint) 3 * triangles.size(), GL_UNSIGNED_INT, triangles.data());
-
-	// test connectivity
-	if (showDebugView) { // set false for HW turn-n 
-		UseDrawShader(camera.fullview);
-
-		// draw/label vertices in yellow 
-		for (int i = 0; i < points.size(); i++) {
-			vec3 p = points[i];
-			Disk(p, 8, vec3(0.8, 0.2, 0.7));
-			// Text(p, camera.fullview, vec3(0.8, 0.2, 0.7), 10, " v%i", i);
-		}
-		// draw/label triangles in cyan 
-		for (int i = 0; i < triangles.size(); i++) {
-			int3 t = triangles[i];
-			vec3 p1 = points[t.i1], p2 = points[t.i2], p3 = points[t.i3], c = (p1 + p2 + p3) / 3;
-			Line(p1, p2, 3, vec3(0, 1, 1));
-			Line(p2, p3, 3, vec3(0, 1, 1));
-			Line(p3, p1, 3, vec3(0, 1, 1));
-			// Text(c, camera.fullview, vec3(0, 1, 1), 10, "t%i", i);
-		}
-	}
-
+	glDrawElements(GL_TRIANGLES, (GLsizei) 3 * triangles.size(), GL_UNSIGNED_INT, triangles.data());
 	// annotation
 	glDisable(GL_DEPTH_TEST);
 	UseDrawShader(camera.fullview);
@@ -194,25 +168,7 @@ void MouseWheel(float spin) {
 
 // Initialization
 
-void SetUvs() {
-	vec3 min, max;
-	Bounds(points.data(), (int) points.size(), min, max);
-	vec3 dif(max-min);
-	for (int i = 0; i < points.size(); i++)
-		uvs[i] = vec2((points[i].x-min.x)/dif.x, (points[i].y-min.y)/dif.y);
-}
-
 void BufferVertices() {
-	// create GPU buffer, make it active
-	glGenBuffers(1, &vBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
-	// allocate/load memory for points and uvs
-	size_t sPoints = points.size() * sizeof(vec3), sUvs = uvs.size() * sizeof(vec2);
-	glBufferData(GL_ARRAY_BUFFER, sPoints+sUvs, NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sPoints, points.data());
-	glBufferSubData(GL_ARRAY_BUFFER, sPoints, sUvs, uvs.data());
-
-	/**
 	// create GPU buffer, make it active
 	glGenBuffers(1, &vBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
@@ -222,36 +178,10 @@ void BufferVertices() {
 	glBufferData(GL_ARRAY_BUFFER, sTotal, NULL, GL_STATIC_DRAW);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sPoints, points.data());
 	glBufferSubData(GL_ARRAY_BUFFER, sPoints, sUvs, uvs.data());
-	glBufferSubData(GL_ARRAY_BUFFER, sUvs, sNormals, normals.data());
-	*/
-
+	glBufferSubData(GL_ARRAY_BUFFER, sPoints + sUvs, sNormals, normals.data());
 }
 
 // Application
-
-void WriteObjFile(const char *filename) {
-	FILE *file = fopen(filename, "w");
-	if (!file)
-		printf("can't save %s\n", filename);
-	else {
-		fprintf(file, "\n# %i vertices\n", points.size());
-		for (int i = 0; i < points.size(); i++)
-			fprintf(file, "v %f %f %f \n", points[i].x, points[i].y, points[i].z);
-		fprintf(file, "\n# %i textures\n", points.size());
-		for (int i = 0; i < points.size(); i++)
-			fprintf(file, "vt %f %f \n", uvs[i].x, uvs[i].y);
-		fprintf(file, "\n# %i triangles\n", triangles.size());
-		for (int i = 0; i < triangles.size(); i++)
-			fprintf(file, "f %i %i %i \n", 1+triangles[i][0], 1+triangles[i][1], 1+triangles[i][2]); // OBJ format
-		fclose(file);
-		printf("%s written\n", filename);
-	}
-}
-
-void Keyboard(int key, bool press, bool shift, bool control) {
-	if (press && key == 'S')
-		WriteObjFile("C:/Users/Jules/Code/G-Assns/LetterB.obj");
-}
 
 void Resize(int width, int height) {
 	camera.Resize(width, height);
@@ -263,12 +193,11 @@ int main(int ac, char **av) {
 	if (!ReadAsciiObj(objFilename, points, triangles, &normals, &uvs))
 		printf("can’t read %s\n", objFilename);
 	else
-		printf("read %s\n", objFilename);
+		printf("opened %s\n", objFilename);
 	// enable anti-alias, init app window and GL context
 	GLFWwindow *w = InitGLFW(100, 100, winWidth, winHeight, "Smooth Mesh");
 	// init shader program, set GPU buffer, read texture image
 	program = LinkProgramViaCode(&vertexShader, &pixelShader);
-	SetUvs();
 	Standardize(points.data(), (int) points.size(), .8f);
 	BufferVertices();
 	textureName = ReadTexture(texFilename);
@@ -277,8 +206,6 @@ int main(int ac, char **av) {
 	RegisterMouseButton(MouseButton);
 	RegisterMouseWheel(MouseWheel);
 	RegisterResize(Resize);
-	RegisterKeyboard(Keyboard);
-	printf("Usage: S to save as OBJ file\n");
 	// event loop
 	while (!glfwWindowShouldClose(w)) {
 		glfwPollEvents();
