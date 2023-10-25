@@ -13,6 +13,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "4-Texture3dLetter", "4-Text
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "5-SmoothMesh", "5-SmoothMesh\5-SmoothMesh.vcxproj", "{0E352A57-BD29-4D24-BC13-4748CF5435E9}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "6-BumpyMesh", "6-BumpyMesh\6-BumpyMesh.vcxproj", "{EB9ECFA9-1D2B-4678-8505-E9AC79338DF2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -60,6 +62,14 @@ Global
 		{0E352A57-BD29-4D24-BC13-4748CF5435E9}.Release|x64.Build.0 = Release|x64
 		{0E352A57-BD29-4D24-BC13-4748CF5435E9}.Release|x86.ActiveCfg = Release|Win32
 		{0E352A57-BD29-4D24-BC13-4748CF5435E9}.Release|x86.Build.0 = Release|Win32
+		{EB9ECFA9-1D2B-4678-8505-E9AC79338DF2}.Debug|x64.ActiveCfg = Debug|x64
+		{EB9ECFA9-1D2B-4678-8505-E9AC79338DF2}.Debug|x64.Build.0 = Debug|x64
+		{EB9ECFA9-1D2B-4678-8505-E9AC79338DF2}.Debug|x86.ActiveCfg = Debug|Win32
+		{EB9ECFA9-1D2B-4678-8505-E9AC79338DF2}.Debug|x86.Build.0 = Debug|Win32
+		{EB9ECFA9-1D2B-4678-8505-E9AC79338DF2}.Release|x64.ActiveCfg = Release|x64
+		{EB9ECFA9-1D2B-4678-8505-E9AC79338DF2}.Release|x64.Build.0 = Release|x64
+		{EB9ECFA9-1D2B-4678-8505-E9AC79338DF2}.Release|x86.ActiveCfg = Release|Win32
+		{EB9ECFA9-1D2B-4678-8505-E9AC79338DF2}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
