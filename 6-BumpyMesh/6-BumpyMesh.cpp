@@ -1,4 +1,4 @@
-// SmoothMesh.cpp: texture-map facet or smooth shaded 3D letter
+// BumpyMesh.cpp: bump map an object
 
 #include <vector>
 #include <glad.h>
@@ -27,10 +27,10 @@ vector<int3> triangles;     // triplets of vertex indices
 GLuint vBuffer = 0, program = 0;
 
 // obj file
-const char* objFilename = "horse.obj";
+const char* objFilename = "fish/Giant_Monster_Fish.obj";
 
 // texture image
-const char *texFilename = "horse_base.png";
+const char *texFilename = "fish/Monster_Color.jpg";
 GLuint textureName = 0;
 int textureUnit = 0;
 
@@ -95,7 +95,7 @@ const char *pixelShader = R"(
 
 void Display(GLFWwindow *w) {
 	// clear screen, enable blend, z-buffer
-	glClearColor(1, 1, 1, 1);
+	glClearColor(0, 0, 0, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
 	// init shader program, connect GPU buffer to vertex shader
