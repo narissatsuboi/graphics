@@ -27,10 +27,10 @@ vector<int3> triangles;     // triplets of vertex indices
 GLuint vBuffer = 0, program = 0;
 
 // obj file
-const char* objFilename = "fish/Giant_Monster_Fish.obj";
+const char* objFilename = "Giant_Monster_Fish.obj";
 
 // texture image
-const char *texFilename = "fish/Monster_Color.jpg";
+const char *texFilename = "Monster_Color.jpg";
 GLuint textureName = 0;
 int textureUnit = 0;
 
