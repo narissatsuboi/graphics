@@ -18,6 +18,20 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Lib\Camera.cpp" />
+    <ClCompile Include="..\Lib\Draw.cpp" />
+    <ClCompile Include="..\Lib\glad.c" />
+    <ClCompile Include="..\Lib\GLXtras.cpp" />
+    <ClCompile Include="..\Lib\IO.cpp" />
+    <ClCompile Include="..\Lib\Letters.cpp" />
+    <ClCompile Include="..\Lib\Mesh.cpp" />
+    <ClCompile Include="..\Lib\Quaternion.cpp" />
+    <ClCompile Include="..\Lib\Sprite.cpp" />
+    <ClCompile Include="..\Lib\Text.cpp" />
+    <ClCompile Include="..\Lib\Widgets.cpp" />
+    <ClCompile Include="6-BumpyMesh.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -134,18 +148,6 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="..\Lib\Camera.cpp" />
-    <ClCompile Include="..\Lib\Draw.cpp" />
-    <ClCompile Include="..\Lib\glad.c" />
-    <ClCompile Include="..\Lib\GLXtras.cpp" />
-    <ClCompile Include="..\Lib\IO.cpp" />
-    <ClCompile Include="..\Lib\Letters.cpp" />
-    <ClCompile Include="..\Lib\Quaternion.cpp" />
-    <ClCompile Include="..\Lib\Text.cpp" />
-    <ClCompile Include="..\Lib\Widgets.cpp" />
-    <ClCompile Include="6-BumpyMesh.cpp" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

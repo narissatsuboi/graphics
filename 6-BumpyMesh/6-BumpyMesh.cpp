@@ -1,4 +1,4 @@
-// BumpyMesh.cpp: bump map an object
+// BumpMap.cpp: bumpy object 
 
 #include <vector>
 #include <glad.h>
@@ -27,24 +27,24 @@ vector<int3> triangles;     // triplets of vertex indices
 GLuint vBuffer = 0, program = 0;
 
 // obj file
-const char* objFilename = "Giant_Monster_Fish.obj";
+const char* objFilename = "cylinder.obj";
 
 // texture image
-const char *texFilename = "Monster_Color.jpg";
+const char* texFilename = "Apple_Sphere.png";
 GLuint textureName = 0;
 int textureUnit = 0;
 
 // movable lights       
 vec3 lights[] = { {.5, 0, 1}, {1, 1, 0} };
-const int nLights = sizeof(lights)/sizeof(vec3);
+const int nLights = sizeof(lights) / sizeof(vec3);
 
 // interaction
-void *picked = NULL;
+void* picked = NULL;
 Mover mover;
 
 // Shaders
 
-const char *vertexShader = R"(
+const char* vertexShader = R"(
 	#version 130
 	in vec3 point;
 	in vec2 uv;
@@ -61,7 +61,7 @@ const char *vertexShader = R"(
 	}
 )";
 
-const char *pixelShader = R"(
+const char* pixelShader = R"(
 	#version 130
 	in vec3 vPoint;
 	in vec2 vUv;
@@ -93,9 +93,9 @@ const char *pixelShader = R"(
 
 // Display
 
-void Display(GLFWwindow *w) {
+void Display(GLFWwindow* w) {
 	// clear screen, enable blend, z-buffer
-	glClearColor(0, 0, 0, 0);
+	glClearColor(1, 1, 1, 1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
 	// init shader program, connect GPU buffer to vertex shader
@@ -104,26 +104,26 @@ void Display(GLFWwindow *w) {
 	// [point, uv, normal]
 	const size_t pointsOffset = points.size() * sizeof(vec3);
 	const size_t pointsUvOffeset = pointsOffset + uvs.size() * sizeof(vec2);
-	VertexAttribPointer(program, "point", 3, 0, (GLvoid *) 0);
-	VertexAttribPointer(program, "uv", 2, 0, (GLvoid *) pointsOffset);
-	VertexAttribPointer(program, "normal", 3, 0, (GLvoid *) pointsUvOffeset);
+	VertexAttribPointer(program, "point", 3, 0, (GLvoid*)0);
+	VertexAttribPointer(program, "uv", 2, 0, (GLvoid*)pointsOffset);
+	VertexAttribPointer(program, "normal", 3, 0, (GLvoid*)pointsUvOffeset);
 	// update matrices
 	SetUniform(program, "modelview", camera.modelview);
 	SetUniform(program, "persp", camera.persp);
 	// transform and update lights
 	vec3 xLights[nLights];
 	for (int i = 0; i < nLights; i++) {
-		vec4 xLight = camera.modelview*vec4(lights[i], 1);
-		xLights[i] = vec3((float*) &xLight);
+		vec4 xLight = camera.modelview * vec4(lights[i], 1);
+		xLights[i] = vec3((float*)&xLight);
 	}
 	SetUniform(program, "nLights", nLights);
-	SetUniform3v(program, "lights", nLights, (float *) xLights);
+	SetUniform3v(program, "lights", nLights, (float*)xLights);
 	// bind textureName to textureUnit
 	glBindTexture(GL_TEXTURE_2D, textureName);
-	glActiveTexture(GL_TEXTURE0+textureUnit);
+	glActiveTexture(GL_TEXTURE0 + textureUnit);
 	SetUniform(program, "textureImage", textureUnit);
 	// render
-	glDrawElements(GL_TRIANGLES, (GLsizei) 3 * triangles.size(), GL_UNSIGNED_INT, triangles.data());
+	glDrawElements(GL_TRIANGLES, (GLsizei)3 * triangles.size(), GL_UNSIGNED_INT, triangles.data());
 	// annotation
 	glDisable(GL_DEPTH_TEST);
 	UseDrawShader(camera.fullview);
@@ -143,7 +143,7 @@ void MouseButton(float x, float y, bool left, bool down) {
 		for (int i = 0; i < nLights; i++)
 			if (MouseOver(x, y, lights[i], camera.fullview)) {
 				picked = &mover;
-				mover.Down(&lights[i], (int) x, (int) y, camera.modelview, camera.persp);
+				mover.Down(&lights[i], (int)x, (int)y, camera.modelview, camera.persp);
 			}
 		if (picked == NULL) {
 			picked = &camera;
@@ -156,7 +156,7 @@ void MouseButton(float x, float y, bool left, bool down) {
 void MouseMove(float x, float y, bool leftDown, bool rightDown) {
 	if (leftDown) {
 		if (picked == &mover)
-			mover.Drag((int) x, (int) y, camera.modelview, camera.persp);
+			mover.Drag((int)x, (int)y, camera.modelview, camera.persp);
 		if (picked == &camera)
 			camera.Drag(x, y);
 	}
@@ -188,17 +188,17 @@ void Resize(int width, int height) {
 	glViewport(0, 0, width, height);
 }
 
-int main(int ac, char **av) {
+int main(int ac, char** av) {
 	// read OBJ file
 	if (!ReadAsciiObj(objFilename, points, triangles, &normals, &uvs))
 		printf("can’t read %s\n", objFilename);
 	else
 		printf("opened %s\n", objFilename);
 	// enable anti-alias, init app window and GL context
-	GLFWwindow *w = InitGLFW(100, 100, winWidth, winHeight, "Smooth Mesh");
+	GLFWwindow* w = InitGLFW(100, 100, winWidth, winHeight, "Smooth Mesh");
 	// init shader program, set GPU buffer, read texture image
 	program = LinkProgramViaCode(&vertexShader, &pixelShader);
-	Standardize(points.data(), (int) points.size(), .8f);
+	Standardize(points.data(), (int)points.size(), .8f);
 	BufferVertices();
 	textureName = ReadTexture(texFilename);
 	// callbacks
