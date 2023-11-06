@@ -15,20 +15,84 @@
 // display
 int winWidth = 800, winHeight = 800;
 Camera camera(0, 0, winWidth, winHeight, vec3(15, -15, 0), vec3(0, 0, -5), 30);
-bool showDebugView = false;
 
-// movable lights       
-vec3 lights[] = { {.5, 0, 1}, {1, 1, 0} };
-const int nLights = sizeof(lights) / sizeof(vec3);
+// control points
+vec3 controlPoints[] = { {.8f, .5f, .0f} ,{.8f, -.5f, .0f} ,{-.8f, .5f, .0f} ,{-.8f, -.5f, .0f} };
+vec3 controlPointsColor = { 0, 1, 0 }, curvePointColor = { 1, 0, 0 };
+const int nControlPoints = sizeof(controlPoints) / sizeof(vec3);
+
+// lines
+float outlineWidth = 1;
+vec3 controLineColor = { 0, 0, 1 }, curveLineColor1 = { 1, 0, 0 }, curveLineColor2 = { 1, 1, 0 };
 
 // interaction
 void* picked = NULL;
+void* hover = NULL;
 Mover mover;
+int resolution = 25; 
+time_t tEvent = clock(); 
 
-// Displauy
+
+class Bezier {
+public:
+	vec3 controlPoints;
+	vec3 p1, p2, p3, p4;    // control points
+	int res;                // display resolution
+	
+	Bezier(const vec3& controlPoints, int res = 50) : controlPoints(controlPoints), res(res) { 
+		this->p1 = this->controlPoints[0]; 
+		this->p2 = this->controlPoints[1]; 
+		this->p3 = this->controlPoints[2]; 
+		this->p4 = this->controlPoints[3]; 
+	}
+
+	vec3 Point(float t) {
+		// return a point on the Bezier curve given parameter t, in (0,1)
+		float t2 = t * t, t3 = t * t2, T = 1 - t, T2 = T * T, T3 = T * T2;
+		return T3 * p1 + (3 * t * T2) * p2 + (3 * t2 * T) * p3 + t3 * p4;
+	}
+
+	void DrawBezierCurve(vec3 color, float width) {
+		// break the curve into res number of straight pieces
+		// *** render each piece with Line() ***
+		
+		for (int i = 0; i < res; i++) {
+			Line(Point((float)i / this->res), Point((float) i + 1 / this->res), width, color);
+		}
+	}
+	void DrawControlPolygon(vec3 pointColor, vec3 meshColor, float opacity, float width) {
+		// draw the four control points and the mesh that connects them
+		for (int i = 0; i < nControlPoints; i++) {
+			Disk((vec3) this->controlPoints[i], width, controlPointsColor); 
+			if (i == 0)
+				continue; 
+			LineDash(this->controlPoints[i - 1], this->controlPoints[i], outlineWidth, curveLineColor1, curveLineColor2);
+		}
+	}
+	vec3* PickPoint(int x, int y, mat4 view) {
+		// return pointer to nearest control point, if within 10 pixels of mouse (x,y), else NULL
+		// hint: use ScreenDistSq
+		return NULL;
+	}
+};
+
+Bezier* curve = new Bezier(* controlPoints, resolution);
+
+// Display
 
 void Display(GLFWwindow* w) {
-
+	// background, blending, zbuffer
+	glClearColor(.6f, .6f, .6f, 1);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glEnable(GL_BLEND);
+	glEnable(GL_LINE_SMOOTH);
+	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDisable(GL_DEPTH_TEST);
+	// draw curve and control polygon
+	UseDrawShader(camera.fullview); // no shading, so single matrix
+	curve.Draw(vec3(.7f, .2f, .5f), 3.5f);
+	curve.DrawControlPolygon(vec3(0, .4f, 0), vec3(1, 1, 0), 1, 2.5f);
 	glFlush();
 }
 
@@ -64,20 +128,6 @@ void MouseWheel(float spin) {
 	camera.Wheel(spin, Shift());
 }
 
-// Initialization
-
-void BufferVertices() {
-	// create GPU buffer, make it active
-	glGenBuffers(1, &vBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
-	// allocate/load memory for points and uvs
-	size_t sPoints = points.size() * sizeof(vec3), sUvs = uvs.size() * sizeof(vec2), sNormals = normals.size() * sizeof(vec3);;
-	size_t sTotal = sPoints + sUvs + sNormals;
-	glBufferData(GL_ARRAY_BUFFER, sTotal, NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sPoints, points.data());
-	glBufferSubData(GL_ARRAY_BUFFER, sPoints, sUvs, uvs.data());
-	glBufferSubData(GL_ARRAY_BUFFER, sPoints + sUvs, sNormals, normals.data());
-}
 
 // Application
 
@@ -87,22 +137,23 @@ void Resize(int width, int height) {
 }
 
 int main(int ac, char** av) {
-
-	// enable anti-alias, init app window and GL context
-	GLFWwindow* w = InitGLFW(100, 100, winWidth, winHeight, "Bumpy Mesh");
-
+	// init app window and GL context
+	glfwInit();
+	GLFWwindow* w = glfwCreateWindow(winWidth, winHeight, "Bezier Curve", NULL, NULL);
+	glfwSetWindowPos(w, 100, 100);
+	glfwMakeContextCurrent(w);
+	gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 	// callbacks
-	RegisterMouseMove(MouseMove);
-	RegisterMouseButton(MouseButton);
-	RegisterMouseWheel(MouseWheel);
-	RegisterResize(Resize);
+	glfwSetCursorPosCallback(w, MouseMove);
+	glfwSetMouseButtonCallback(w, MouseButton);
+	glfwSetScrollCallback(w, MouseWheel);
+	glfwSetWindowSizeCallback(w, Resize);
 	// event loop
 	while (!glfwWindowShouldClose(w)) {
-		glfwPollEvents();
 		Display(w);
+		glfwPollEvents();
 		glfwSwapBuffers(w);
 	}
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glfwDestroyWindow(w);
 	glfwTerminate();
 }
