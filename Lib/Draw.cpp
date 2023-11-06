@@ -1,13 +1,13 @@
 // Draw.cpp - various draw operations (c) 2019-2022 Jules Bloomenthal
 
 #include <glad.h>
-#include <gl/glu.h>
 #include "Draw.h"
 #include "GLXtras.h"
 #include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
+// #include <gl/glu.h>
 
 using std::string;
 
@@ -131,6 +131,13 @@ bool UnProject(float xscreen, float yscreen, float zscreen, mat4 &fullview, vec3
 	return true;
 }
 
+void UnProjectInv(float xscreen, float yscreen, float zscreen, mat4 &inv, vec3 &p) {
+	vec4 vp = VP();
+	vec4 ndc(2.f*(xscreen-vp[0])/vp[2]-1.f, 2.f*(yscreen-vp[1])/vp[3]-1.f, 2*zscreen-1.f, 1.f);
+	vec4 q = inv*ndc;
+	p = vec3(q.x, q.y, q.z)/q.w;
+}
+
 void ScreenRay(float xscreen, float yscreen, mat4 modelview, mat4 persp, vec3 &p, vec3 &v) {
 	// compute ray from p in direction v; p is transformed eyepoint, xscreen, yscreen determine v
 	int vp[4];
@@ -139,30 +146,34 @@ void ScreenRay(float xscreen, float yscreen, mat4 modelview, mat4 persp, vec3 &p
 	p = vec3(modelview[0][3], modelview[1][3], modelview[2][3]);
 	mat4 fullview = persp*modelview;
 	vec3 p1, p2;
-	bool ok = UnProject(xscreen, yscreen, .25f, fullview, p1) &&
-	          UnProject(xscreen, yscreen, .50f, fullview, p2);
+	bool ok = UnProject(xscreen, yscreen, .25f, fullview, p1) && // *** should be able to use p, no?
+			  UnProject(xscreen, yscreen, .50f, fullview, p2);
 	v = normalize(p2-p1);
 	// create transposes for gluUnproject
-//	double tpersp[4][4], tmodelview[4][4], a[3], b[3];
-//	for (int i = 0; i < 4; i++)
-//		for (int j = 0; j < 4; j++) {
-//			tmodelview[i][j] = modelview[j][i];
-//			tpersp[i][j] = persp[j][i];
-//		}
+	//	double tpersp[4][4], tmodelview[4][4], a[3], b[3];
+	//	for (int i = 0; i < 4; i++)
+	//		for (int j = 0; j < 4; j++) {
+	//			tmodelview[i][j] = modelview[j][i];
+	//			tpersp[i][j] = persp[j][i];
+	//		}
 	// un-project two screen points of differing depth to determine v
-//	if (gluUnProject(xscreen, yscreen, .25, (const double*) tmodelview, (const double*) tpersp, vp, &a[0], &a[1], &a[2]) == GL_FALSE)
-//		printf("UnProject false\n");
-//	if (gluUnProject(xscreen, yscreen, .50, (const double*) tmodelview, (const double*) tpersp, vp, &b[0], &b[1], &b[2]) == GL_FALSE)
-//		printf("UnProject false\n");
-//	v = normalize(vec3((float) (b[0]-a[0]), (float) (b[1]-a[1]), (float) (b[2]-a[2])));
+	//	if (gluUnProject(xscreen, yscreen, .25, (const double*) tmodelview, (const double*) tpersp, vp, &a[0], &a[1], &a[2]) == GL_FALSE)
+	//		printf("UnProject false\n");
+	//	if (gluUnProject(xscreen, yscreen, .50, (const double*) tmodelview, (const double*) tpersp, vp, &b[0], &b[1], &b[2]) == GL_FALSE)
+	//		printf("UnProject false\n");
+	//	v = normalize(vec3((float) (b[0]-a[0]), (float) (b[1]-a[1]), (float) (b[2]-a[2])));
 }
 
 void ScreenLine(float xscreen, float yscreen, mat4 modelview, mat4 persp, vec3 &p1, vec3 &p2) {
 	// compute 3D world space line, given by p1 and p2, that transforms
 	// to a line perpendicular to the screen at (xscreen, yscreen)
-	mat4 fullview = persp*modelview;
-	bool ok = UnProject(xscreen, yscreen, .25f, fullview, p1) &&
-	          UnProject(xscreen, yscreen, .50f, fullview, p2);
+	mat4 fullview = persp*modelview, inv;
+	if (!InverseMatrix4x4(&fullview[0][0], &inv[0][0]))
+		printf("ScreenLine: can't unProject\n");
+	else {
+		UnProjectInv(xscreen, yscreen, .25f, inv, p1);
+		UnProjectInv(xscreen, yscreen, .50f, inv, p2);
+	}
 	// double tpersp[4][4], tmodelview[4][4], a[3], b[3];
 	// get viewport
 	// int vp[4];

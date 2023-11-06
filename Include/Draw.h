@@ -48,7 +48,9 @@ double ScreenZ(vec3 p, mat4 m);
 bool FrontFacing(vec3 base, vec3 vec, mat4 view);
 
 // 2D/3D drawing operations
-// void SetDefaultDisplay(vec3 backgroundColor);
+
+mat4 GetDrawView();
+void SetDrawView(mat4 m);
 
 GLuint GetDrawShader();
 GLuint GetTriangleShader();

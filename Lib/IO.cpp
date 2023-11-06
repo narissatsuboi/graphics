@@ -59,15 +59,18 @@ GLuint ReadTexture(const char *filename, bool mipmap, int *n, int *w, int *h) {
 	int width, height, nChannels;
 	stbi_set_flip_vertically_on_load(true);
 	unsigned char *data = stbi_load(filename, &width, &height, &nChannels, 0);
+
 	if (!data) {
 		printf("ReadTexture: can't open %s (%s)\n", filename, stbi_failure_reason());
 		return 0;
 	}
+
 	if (n) *n = nChannels;
 	if (w) *w = width;
 	if (h) *h = height;
 	GLuint textureName = 0;
 	glGenTextures(1, &textureName);
+
 	LoadTexture(data, width, height, nChannels, textureName, false, mipmap);
 	stbi_image_free(data);
 	return textureName;
