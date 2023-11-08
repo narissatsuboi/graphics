@@ -87,7 +87,7 @@ int textureUnitLower = 2, textureUnitUpper = 3, textureUnitNumber = 4; // this d
 
 int MakeLetterTexture(unsigned char *image) {//, int textureUnit) {
 	// create and load texture raster
-	int nchars = strlen(lowerCaseImage), npixels = nchars/2, height = 13, width = npixels/height;
+	int nchars = (int) strlen(lowerCaseImage), npixels = nchars/2, height = 13, width = npixels/height;
 	unsigned char *pixels = new unsigned char[3*npixels], *p = pixels, *n = (unsigned char *) image;
 	for (int i = 0; i < npixels; i++) {
 		char c1 = *n++, c2 = *n++;
@@ -102,7 +102,7 @@ int MakeLetterTexture(unsigned char *image) {//, int textureUnit) {
 
 int MakeNumberTexture(unsigned char *image) {//, int textureUnit) {
 	// create and load texture raster
-	int nchars = strlen(numberImage), npixels = nchars/2, height = 10, width = npixels/height;
+	int nchars = (int) strlen(numberImage), npixels = nchars/2, height = 10, width = npixels/height;
 	unsigned char *pixels = new unsigned char[3*npixels], *p = pixels, *n = (unsigned char *) image;
 	for (int i = 0; i < npixels; i++) {
 		char c1 = *n++, c2 = *n++;
@@ -117,6 +117,7 @@ int MakeNumberTexture(unsigned char *image) {//, int textureUnit) {
 
 void Letter(int x, int y, char c, vec3 color, float ptSize) {
 	if (c < 48 || c == 61 || c == 94) { // 32(space), 40((), 41()), 43(+), 45(-), 46(.), 47(/), 61(=), 94(^)
+//		if (true) return;
 		float lineWidth = ptSize/3; // = 2;
 		UseDrawShader(ScreenMode());
 		int size = (int) ptSize, h = (int)(ptSize*.5f), hh = (int)(ptSize*.75f);
@@ -214,15 +215,25 @@ void Letter(int x, int y, char c, vec3 color, float ptSize) {
 }
 
 void Letters(int x, int y, const char *letters, vec3 color, float ptSize) {
+	int was = 0;
+	mat4 drawView = GetDrawView();
+	glGetIntegerv(GL_CURRENT_PROGRAM, &was);
 	for (int i = 0; i < (int) strlen(letters); i++)
 		Letter((int) (x+i*ptSize), y, letters[i], color, ptSize);
+	glUseProgram(was);
+	SetDrawView(drawView);
 }
 
 void Letters(vec3 p, mat4 m, const char *letters, vec3 color, float ptSize) {
+	int was = 0;
+	mat4 drawView = GetDrawView();
+	glGetIntegerv(GL_CURRENT_PROGRAM, &was);
 	vec2 pp = ScreenPoint(p, m);
 	for (int i = 0; i < (int) strlen(letters); i++)
 	//	Letter((int) (pp.x+i*10.9f), (int) pp.y, letters[i], color, ptSize);
 		Letter((int) (pp.x+i*ptSize), (int) pp.y, letters[i], color, ptSize);
+	glUseProgram(was);
+	SetDrawView(drawView);
 }
 
 /*	// method to convert image to hexadecimal data

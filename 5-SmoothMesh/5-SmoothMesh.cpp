@@ -27,7 +27,7 @@ vector<int3> triangles;     // triplets of vertex indices
 GLuint vBuffer = 0, program = 0;
 
 // obj file
-const char* objFilename = "horse.obj";
+const char* objFilename = "sphere.OBJ";
 
 // texture image
 const char *texFilename = "horse_base.png";

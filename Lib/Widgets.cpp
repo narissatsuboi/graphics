@@ -41,12 +41,12 @@ int TransformArray(vec3 *in, vec3 *out, int n, mat4 m) {
 
 int TransformArray(vector<vec3> &vecs, vector<vec3> &xvecs, mat4 m) {
 	xvecs.resize(vecs.size());
-	return TransformArray(vecs.data(), xvecs.data(), vecs.size(), m);
+	return TransformArray(vecs.data(), xvecs.data(), (int) vecs.size(), m);
 }
 
 vector<vec3> TransformArray(vector<vec3> &vecs, mat4 m) {
 	vector<vec3> xvecs(vecs.size());
-	TransformArray(vecs.data(), xvecs.data(), vecs.size(), m);
+	TransformArray(vecs.data(), xvecs.data(), (int) vecs.size(), m);
 	return xvecs;
 }
 
@@ -210,6 +210,7 @@ void Arcball::SetCamera(mat4 *mat, vec2 c, float r) {
 	scale = MatrixScale(*m);
 	radius = r;
 	center = c;
+	// if Apple, do c coords get doubled?
 }
 
 void Arcball::SetCenter(vec2 c) {
@@ -650,7 +651,7 @@ void Magnifier::Display(int2 displayLoc, bool showSrcWindow) {
 		void Rect(int xi, int yi, int wi, int hi, bool solid, vec3 col) {
 			float x = (float) xi, y = (float) yi, w = (float) wi, h = (float) hi;
 			vec3 p0(x, y, 0), p1(x+w, y, 0), p2(x+w, y+h, 0), p3(x, y+h, 0);
-			Quad(p0, p1, p2, p3, solid, col, 1, 2.5f);
+			Quad(p0, p1, p2, p3, solid, col, 1, 4); // 2.5f);
 		}
 	} h;
 	int nxBlocks = displaySize[0]/blockSize, nyBlocks = displaySize[1]/blockSize;
