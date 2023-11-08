@@ -1,6 +1,7 @@
-// Assn-7.cpp: Bezier Curbe
+// Assn-7.cpp: Bezier Curve with 4 Control Points by Narissa Tsuboi
 
 #include <vector>
+#include <time.h>
 #include <glad.h>
 #include <GLFW/glfw3.h>
 #include "Camera.h"
@@ -11,101 +12,110 @@
 #include "VecMat.h"
 #include "Widgets.h"
 
-
-// display
-int winWidth = 800, winHeight = 800;
-Camera camera(0, 0, winWidth, winHeight, vec3(15, -15, 0), vec3(0, 0, -5), 30);
-
-// control points
-vec3 controlPoints[] = { {.8f, .5f, .0f} ,{.8f, -.5f, .0f} ,{-.8f, .5f, .0f} ,{-.8f, -.5f, .0f} };
-vec3 controlPointsColor = { 0, 1, 0 }, curvePointColor = { 1, 0, 0 };
-const int nControlPoints = sizeof(controlPoints) / sizeof(vec3);
-
-// lines
-float outlineWidth = 1;
-vec3 controLineColor = { 0, 0, 1 }, curveLineColor1 = { 1, 0, 0 }, curveLineColor2 = { 1, 1, 0 };
-
-// interaction
-void* picked = NULL;
-void* hover = NULL;
-Mover mover;
-int resolution = 25; 
-time_t tEvent = clock(); 
-
+time_t startTime = clock();
 
 class Bezier {
+private: 
+	vector<vec3> ctrlPoints;
+	vec3 lineColor = { 0, 0, 1 };
+	vec3 curveColor = { 0.75, 0, 0 };
+	float resolution = 666;
+	float width = 3.0;
+	float opacity = 1.0;
+
+	int nCtrlPoints = 0; 
+
+	const vec3 pointColor = { 0, 1, 0 };
+	const vec3 dotColor = { 1, 0, 0 };
+	const float ctrlPointThickness = 12.0;
+	const float dotThickness = 12.0;
+	const float duration = 4.0;
+
 public:
-	vec3 controlPoints;
-	vec3 p1, p2, p3, p4;    // control points
-	int res;                // display resolution
-	
-	Bezier(const vec3& controlPoints, int res = 50) : controlPoints(controlPoints), res(res) { 
-		this->p1 = this->controlPoints[0]; 
-		this->p2 = this->controlPoints[1]; 
-		this->p3 = this->controlPoints[2]; 
-		this->p4 = this->controlPoints[3]; 
+	Bezier(vec3 points[]) {
+		for (int i = 0; i < 4; i++) 
+			this->ctrlPoints.push_back(points[i]);
+		this->ctrlPoints = ctrlPoints;
+		this->nCtrlPoints = ctrlPoints.size();
+	}
+
+	Bezier(vec3 points[], vec3 lineColor, vec3 curveColor, float resolution, float width, float opacity) {
+		for (int i = 0; i < 4; i++) 
+			this->ctrlPoints.push_back(points[i]);
+		this->nCtrlPoints = ctrlPoints.size();
+		this->lineColor = lineColor;
+		this->curveColor = curveColor;
+		this->resolution = resolution; 
+		this->width = width;
+		this->opacity = opacity;
 	}
 
 	vec3 Point(float t) {
-		// return a point on the Bezier curve given parameter t, in (0,1)
-		float t2 = t * t, t3 = t * t2, T = 1 - t, T2 = T * T, T3 = T * T2;
-		return T3 * p1 + (3 * t * T2) * p2 + (3 * t2 * T) * p3 + t3 * p4;
+		float t2 = t * t, t3 = t * t2, x = 1 - t, x2 = x * x, x3 = x * x2;
+		return x3 * ctrlPoints[0] + (3 * t * x2) * ctrlPoints[1] + (3 * t2 * x) * ctrlPoints[2] + t3 * ctrlPoints[3];
 	}
 
-	void DrawBezierCurve(vec3 color, float width) {
-		// break the curve into res number of straight pieces
-		// *** render each piece with Line() ***
-		
-		for (int i = 0; i < res; i++) {
-			Line(Point((float)i / this->res), Point((float) i + 1 / this->res), width, color);
-		}
+	void DrawBezierCurve() {
+		for (int i = 0; i < resolution; i++)  
+			Line(Point((float) (i + 1) / resolution), Point((float) i / resolution), width, curveColor, opacity);
 	}
-	void DrawControlPolygon(vec3 pointColor, vec3 meshColor, float opacity, float width) {
-		// draw the four control points and the mesh that connects them
-		for (int i = 0; i < nControlPoints; i++) {
-			Disk((vec3) this->controlPoints[i], width, controlPointsColor); 
-			if (i == 0)
-				continue; 
-			LineDash(this->controlPoints[i - 1], this->controlPoints[i], outlineWidth, curveLineColor1, curveLineColor2);
-		}
+
+	void DrawControlPolygon() {
+		for (int i = 0; i < nCtrlPoints - 1; i++)
+			LineDash(ctrlPoints[i], ctrlPoints[i + 1], width, lineColor, lineColor, opacity);
 	}
-	vec3* PickPoint(int x, int y, mat4 view) {
-		// return pointer to nearest control point, if within 10 pixels of mouse (x,y), else NULL
-		// hint: use ScreenDistSq
-		return NULL;
+
+	void DrawControlPoints() {
+		for (int i = 0; i < nCtrlPoints; i++)
+			Disk(ctrlPoints[i], ctrlPointThickness, pointColor, opacity);
+	}
+
+	void DrawMovingDot() {
+		const float PI = 3.1415;
+		float elapsedTime = (float)(clock() - startTime) / CLOCKS_PER_SEC;
+		float t = (float)(sin(2 * PI * elapsedTime / duration) + 1) / 2;
+		Disk(Point(t), dotThickness, dotColor);
 	}
 };
 
-Bezier* curve = new Bezier(* controlPoints, resolution);
+GLuint program = 0;
 
-// Display
+int winWidth = 1000, winHeight = 1000;
+Camera camera(0, 0, winWidth, winHeight, vec3(15, -15, 0), vec3(0, 0, -5), 30);
+
+Mover mover;
+void* picked = NULL;
+
+vec3 cps[] = { {-1.0f, 0.5f, 0.0f} ,{-1.0f, -0.5f, 0.0f}, {1.0f, 0.5f, 0.0f} ,{1.0f, -0.5f, 0.0f} };
+const int nCps = sizeof(cps) / sizeof(vec3);
 
 void Display(GLFWwindow* w) {
-	// background, blending, zbuffer
-	glClearColor(.6f, .6f, .6f, 1);
-	glClear(GL_COLOR_BUFFER_BIT);
-	glEnable(GL_BLEND);
-	glEnable(GL_LINE_SMOOTH);
-	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glDisable(GL_DEPTH_TEST);
-	// draw curve and control polygon
-	UseDrawShader(camera.fullview); // no shading, so single matrix
-	curve.Draw(vec3(.7f, .2f, .5f), 3.5f);
-	curve.DrawControlPolygon(vec3(0, .4f, 0), vec3(1, 1, 0), 1, 2.5f);
+	glClearColor(1, 1, 1, 1);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glUseProgram(program);
+
+	vec3 xControlPoints[nCps];
+	for (int i = 0; i < nCps; i++) {
+		vec4 xControlPoint = camera.modelview * vec4(cps[i], 1);
+		xControlPoints[i] = vec3((float*)&xControlPoint);
+	}
+
+	UseDrawShader(camera.fullview);
+	Bezier bc = Bezier(cps);
+	bc.DrawControlPolygon();
+	bc.DrawControlPoints();
+	bc.DrawBezierCurve();
+	bc.DrawMovingDot(); 
 	glFlush();
 }
-
-// Mouse Callbacks
 
 void MouseButton(float x, float y, bool left, bool down) {
 	picked = NULL;
 	if (left && down) {
-		// light picked?
-		for (int i = 0; i < nLights; i++)
-			if (MouseOver(x, y, lights[i], camera.fullview)) {
+		for (int i = 0; i < nCps; i++)
+			if (MouseOver(x, y, cps[i], camera.fullview)) {
 				picked = &mover;
-				mover.Down(&lights[i], (int)x, (int)y, camera.modelview, camera.persp);
+				mover.Down(&cps[i], (int)x, (int)y, camera.modelview, camera.persp);
 			}
 		if (picked == NULL) {
 			picked = &camera;
@@ -128,30 +138,22 @@ void MouseWheel(float spin) {
 	camera.Wheel(spin, Shift());
 }
 
-
-// Application
-
 void Resize(int width, int height) {
 	camera.Resize(width, height);
 	glViewport(0, 0, width, height);
 }
 
 int main(int ac, char** av) {
-	// init app window and GL context
-	glfwInit();
-	GLFWwindow* w = glfwCreateWindow(winWidth, winHeight, "Bezier Curve", NULL, NULL);
-	glfwSetWindowPos(w, 100, 100);
-	glfwMakeContextCurrent(w);
-	gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-	// callbacks
-	glfwSetCursorPosCallback(w, MouseMove);
-	glfwSetMouseButtonCallback(w, MouseButton);
-	glfwSetScrollCallback(w, MouseWheel);
-	glfwSetWindowSizeCallback(w, Resize);
-	// event loop
+	GLFWwindow* w = InitGLFW(100, 100, winWidth, winHeight, "Bezier Curve - 4 Control Points");
+
+	RegisterMouseMove(MouseMove);
+	RegisterMouseButton(MouseButton);
+	RegisterMouseWheel(MouseWheel);
+	RegisterResize(Resize);
+
 	while (!glfwWindowShouldClose(w)) {
-		Display(w);
 		glfwPollEvents();
+		Display(w);
 		glfwSwapBuffers(w);
 	}
 	glfwDestroyWindow(w);
