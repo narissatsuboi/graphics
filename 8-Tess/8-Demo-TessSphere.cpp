@@ -32,7 +32,7 @@ const char *vShader = R"(
 
 time_t startTime = clock();
 float PI = 3.141592;
-float duration = 1.0; 
+float duration = 4.0; 
 
 // tessellation evaluation shader
 const char* teShader = R"(
