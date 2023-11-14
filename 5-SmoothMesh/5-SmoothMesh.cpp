@@ -26,8 +26,8 @@ vector<int3> triangles;     // triplets of vertex indices
 // OpenGL IDs for vertex buffer, shader program
 GLuint vBuffer = 0, program = 0;
 
-// obj file
-const char* objFilename = "sphere.OBJ";
+// OBJ file 
+const char *objFilename = "pumpkin_scan.obj";
 
 // texture image
 const char *texFilename = "horse_base.png";
@@ -43,7 +43,6 @@ void *picked = NULL;
 Mover mover;
 
 // Shaders
-
 const char *vertexShader = R"(
 	#version 130
 	in vec3 point;
@@ -55,6 +54,7 @@ const char *vertexShader = R"(
 	uniform mat4 modelview, persp;
 	void main() {
 		vPoint = (modelview*vec4(point, 1)).xyz;
+		vNormal = (modelview*vec4(normal,1));
 		gl_Position = persp*vec4(vPoint, 1);
 		vUv = uv;
 		vNormal = (modelview*vec4(normal, 0)).xyz;
@@ -65,8 +65,9 @@ const char *pixelShader = R"(
 	#version 130
 	in vec3 vPoint;
 	in vec2 vUv;
-	in vec3 vNormal; 
+	in vec3 vNormal;
 	out vec4 pColor;
+	uniform bool faceted = false;
 	uniform sampler2D textureImage;
 	uniform int nLights = 0;
 	uniform vec3 lights[20];
@@ -76,7 +77,11 @@ const char *pixelShader = R"(
 	void main() {
 
 		vec3 dx = dFdx(vPoint), dy = dFdy(vPoint);				// change in vPoint in horiz/vert directions
-		vec3 N = faceted ? normalize(cross(dx, dy)) : vNormal;	
+		
+		vec3 N = normalize(faceted?                             // surface normal 
+				cross(dx, dy) :                                 //   faceted 
+				(vec3)vNormal;                                        //   smooth 
+
 		float d = 0, s = 0;
 		vec3 E = normalize(vPoint);								// eye vector
 		for (int i = 0; i < nLights; i++) {
@@ -101,12 +106,9 @@ void Display(GLFWwindow *w) {
 	// init shader program, connect GPU buffer to vertex shader
 	glUseProgram(program);
 	glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
-	// [point, uv, normal]
-	const size_t pointsOffset = points.size() * sizeof(vec3);
-	const size_t pointsUvOffeset = pointsOffset + uvs.size() * sizeof(vec2);
-	VertexAttribPointer(program, "point", 3, 0, (GLvoid *) 0);
-	VertexAttribPointer(program, "uv", 2, 0, (GLvoid *) pointsOffset);
-	VertexAttribPointer(program, "normal", 3, 0, (GLvoid *) pointsUvOffeset);
+	VertexAttribPointer(program, "point", 3, 0, (void *) 0);
+	VertexAttribPointer(program, "uv", 2, 0, (void *) points.size());
+	VertexAttribPointer(program, "normal", 3, 0, (void*) normals.size()); 
 	// update matrices
 	SetUniform(program, "modelview", camera.modelview);
 	SetUniform(program, "persp", camera.persp);
@@ -198,7 +200,10 @@ int main(int ac, char **av) {
 	GLFWwindow *w = InitGLFW(100, 100, winWidth, winHeight, "Smooth Mesh");
 	// init shader program, set GPU buffer, read texture image
 	program = LinkProgramViaCode(&vertexShader, &pixelShader);
-	Standardize(points.data(), (int) points.size(), .8f);
+	SetUvs();
+
+	Standardize(points.data(), points.size(), .8f); // fit points to +/- .8 space
+	
 	BufferVertices();
 	textureName = ReadTexture(texFilename);
 	// callbacks
@@ -216,4 +221,5 @@ int main(int ac, char **av) {
 	glDeleteBuffers(1, &vBuffer);
 	glfwDestroyWindow(w);
 	glfwTerminate();
+
 }
