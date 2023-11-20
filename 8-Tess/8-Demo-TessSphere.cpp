@@ -34,59 +34,48 @@ time_t startTime = clock();
 float PI = 3.141592;
 float duration = 4.0; 
 
+vec3        ctrlPts[] = {
+	{-1.5f, -1.5f, 0}, {-.5f, -1.5f,   0}, {.5f, -1.5f,   0}, {1.5f, -1.5f, 0},
+	{-1.5f,  -.5f, 0}, {-.5f,  -.5f, .7f}, {.5f,  -.5f, .7f}, {1.5f,  -.5f, 0},
+	{-1.5f,   .5f, 0}, {-.5f,   .5f, .7f}, {.5f,   .5f, .7f}, {1.5f,   .5f, 0},
+	{-1.5f,  1.5f, 0}, {-.5f,  1.5f,   0}, {.5f,  1.5f,   0}, {1.5f,  1.5f, 0}
+};
+
 // tessellation evaluation shader
 const char* teShader = R"(
-    #version 400 
+	#version 400 core 
     layout (quads, equal_spacing, ccw) in; 
+    uniform vec3 ctrlPts[16]; 
     uniform mat4 modelview, persp; 
-    uniform float innerRadius = 1, outerRadius = 1; 
-	uniform float alpha;
-    out vec3 point, normal;
-    out vec2 uv;
-    float PI = 3.141592; 
-    vec3 RotateAboutY(vec2 p, float radians) { 
-        return vec3(cos(radians)*p.x, p.y, sin(radians)*p.x);; 
+    out vec3 point, normal; 
+    out vec2 uv; 
+    vec3 BezTangent(float t, vec3 b1, vec3 b2, vec3 b3, vec3 b4) { 
+        float t2 = t*t; 
+        return (-3*t2+6*t-3)*b1+(9*t2-12*t+3)*b2+(6*t-9*t2)*b3+3*t2*b4; 
     } 
-    void Straight(float v, out vec2 p, out vec2 n) { 
-        p = vec2(innerRadius, 2*v-1); 
-        n = vec2(1, 0); 
+    vec3 BezPoint(float t, vec3 b1, vec3 b2, vec3 b3, vec3 b4) { 
+        float t2 = t*t, t3 = t*t2; 
+        return (-t3+3*t2-3*t+1)*b1+(3*t3-6*t2+3*t)*b2+(3*t2-3*t3)*b3+t3*b4; 
     } 
-    void Slant(float v, out vec2 p, out vec2 n) { 
-        p = vec2((1-v)*innerRadius, 2*v-1); 
-        n = normalize(vec2(2, -innerRadius)); 
-    } 
-    void SemiCircle(float v, out vec2 p, out vec2 n) { 
-        float angle = PI*v-PI/2; 
-        p = vec2(cos(angle), sin(angle)); 
-        n = p;                       // for unit circle, normal = point 
-        p *= innerRadius; 
-    } 
-    void Circle(float v, float t, out vec2 p, out vec2 n) { 
-        float angle = 2*v*PI-PI, c = cos(angle), s = sin(angle); 
-        p = innerRadius*vec2(c+1+1.5*t, s); 
-        n = vec2(c, s); 
-    }
     void main() { 
-        
-        uv = gl_TessCoord.st;        // unique TessCoord per invocation 
-        vec2 xp1, xn1;    // cross-section is in XY plane 
-        SemiCircle(uv.y, xp1, xn1);   // set cross-section point, normal 
-        vec3 p1 = RotateAboutY(xp1, uv.x*2*PI); // rotate point longitudinally 
-        vec3 n1 = RotateAboutY(xn1, uv.x*2*PI); // rotate normal longitudinally 
-
-        vec2 xp2, xn2;    // cross-section is in XY plane 
-        Slant(uv.y, xp2, xn2);   // set cross-section point, normal 
-        vec3 p2 = RotateAboutY(xp2, uv.x*2*PI); // rotate point longitudinally 
-        vec3 n2 = RotateAboutY(xn2, uv.x*2*PI); // rotate normal longitudinally 
-
-		vec3 p3 = mix(p1, p2, alpha);
-		vec3 n3 = normalize(mix(n1, n2, alpha));
-
-        point = (modelview*vec4(p3, 1)).xyz; // transform point 
-        normal = (modelview*vec4(n3, 0)).xyz; // transform normal 
-
+        vec3 spts[4], tpts[4]; 
+        uv = gl_TessCoord.st; 
+ // define a curve in s-direction and one in t-direction 
+        for (int i = 0; i < 4; i++) { 
+           spts[i] = BezPoint(uv.s, ctrlPts[4*i], ctrlPts[4*i+1], ctrlPts[4*i+2], ctrlPts[4*i+3]); 
+           tpts[i] = BezPoint(uv.t, ctrlPts[i], ctrlPts[i+4], ctrlPts[i+8], ctrlPts[i+12]); 
+        } 
+        // compute point on patch and transform by modelview 
+        vec3 p = BezPoint(uv.t, spts[0], spts[1], spts[2], spts[3]); 
+        point = (modelview*vec4(p, 1)).xyz; 
+        // compute tangents in s-direction and t-direction 
+        vec3 tTan = BezTangent(uv.t, spts[0], spts[1], spts[2], spts[3]); 
+        vec3 sTan = BezTangent(uv.s, tpts[0], tpts[1], tpts[2], tpts[3]); 
+ // compute normal as cross-product of tangents and transform by modelview 
+        vec3 n = normalize(cross(sTan, tTan)); 
+        normal = (modelview*vec4(n, 0)).xyz; 
         gl_Position = persp*vec4(point, 1); 
-    } 
+    
 )";
 
 
@@ -123,6 +112,9 @@ void Display(GLFWwindow *w) {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	glUseProgram(program);
+
+	SetUniform3v(program, "ctrlPts", 16, (float*)ctrlPts);
+
 	// set alpha for interpolation between shapes
 	SetUniform(program, "alpha", alpha);
 	// send matrices to vertex shader
