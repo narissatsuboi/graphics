@@ -27,12 +27,17 @@ vector<int3> triangles;     // triplets of vertex indices
 GLuint vBuffer = 0, program = 0;
 
 // obj file
-const char* objFilename = "cylinder.obj";
+const char* objFilename = "Fish.obj";
 
 // texture image
-const char* texFilename = "Apple_Sphere.png";
+const char* texFilename = "Monster_Color.jpg";
 GLuint textureName = 0;
 int textureUnit = 0;
+
+// bump map 
+const char* bumpFilename = "Monster_Normal.jpg";
+GLuint bumpName = 0;
+int bumpUnit = 1;
 
 // movable lights       
 vec3 lights[] = { {.5, 0, 1}, {1, 1, 0} };
@@ -62,34 +67,46 @@ const char* vertexShader = R"(
 )";
 
 const char* pixelShader = R"(
-	#version 130
-	in vec3 vPoint;
-	in vec2 vUv;
-	in vec3 vNormal; 
-	out vec4 pColor;
-	uniform sampler2D textureImage;
-	uniform int nLights = 0;
-	uniform vec3 lights[20];
-	uniform bool faceted = false; 
-	
-	uniform float amb = .1, dif = .8, spc =.7;					// ambient, diffuse, specular
-	void main() {
-
-		vec3 dx = dFdx(vPoint), dy = dFdy(vPoint);				// change in vPoint in horiz/vert directions
-		vec3 N = faceted ? normalize(cross(dx, dy)) : vNormal;	
-		float d = 0, s = 0;
-		vec3 E = normalize(vPoint);								// eye vector
-		for (int i = 0; i < nLights; i++) {
-			vec3 L = normalize(lights[i]-vPoint);				// light vector
-			vec3 R = reflect(L, N);								// highlight vector
-			d += max(0, dot(N, L));								// one-sided diffuse
-			float h = max(0, dot(R, E));						// highlight term
-			s += pow(h, 100);									// specular term
-		}
-		float ads = clamp(amb+dif*d+spc*s, 0, 1);
-		pColor = vec4(ads*texture(textureImage, vUv).rgb, 1);
-	}
+    #version 130
+    in vec3 vPoint;
+    in vec2 vUv;
+    in vec3 vNormal; 
+    out vec4 pColor;
+    uniform sampler2D textureImage;
+    uniform sampler2D bumpMap;
+    uniform int nLights;
+    uniform vec3 lights[20];
+    
+    uniform float amb = 0.1;
+    uniform float dif = 0.8;
+    uniform float spc = 0.7;
+    
+    void main() {
+        vec3 dx = dFdx(vPoint), dy = dFdy(vPoint);
+        vec2 du = dFdy(vUv), dv = dFdx(vUv);
+        
+        vec3 X = normalize(du.x * dx + du.y * dy); 
+        vec3 Y = normalize(dv.x * dx + dv.y * dy);
+        vec3 Z = normalize(vNormal);
+        vec4 t = texture(bumpMap, vUv);
+        vec3 b = vec3(2.0 * t.r - 1.0, 2.0 * t.g - 1.0, t.b);
+        vec3 N = normalize(b.x * X + b.y * Y + b.z * Z); 
+        
+        float d = 0.0, s = 0.0;
+        vec3 E = normalize(vPoint);  
+        for (int i = 0; i < nLights; i++) {
+            vec3 L = normalize(lights[i] - vPoint);  
+            vec3 R = reflect(L, N);  
+            d += max(0.0, dot(N, L));  
+            float h = max(0.0, dot(R, E));  
+            s += pow(h, 100.0);  
+        }
+        
+        float ads = clamp(amb + dif * d + spc * s, 0.0, 1.0);
+        pColor = vec4(ads * texture(textureImage, vUv).rgb, 1.0);
+    }
 )";
+
 
 // Display
 
@@ -118,10 +135,13 @@ void Display(GLFWwindow* w) {
 	}
 	SetUniform(program, "nLights", nLights);
 	SetUniform3v(program, "lights", nLights, (float*)xLights);
-	// bind textureName to textureUnit
-	glBindTexture(GL_TEXTURE_2D, textureName);
-	glActiveTexture(GL_TEXTURE0 + textureUnit);
+	// bind textureName to textureUnit and bumpMap to bumpUnit
 	SetUniform(program, "textureImage", textureUnit);
+	glBindTexture(GL_TEXTURE_2D, textureName);
+
+	glActiveTexture(GL_TEXTURE0 + bumpUnit);
+	glBindTexture(GL_TEXTURE_2D, bumpName);
+	SetUniform(program, "bumpMap", bumpUnit);
 	// render
 	glDrawElements(GL_TRIANGLES, (GLsizei)3 * triangles.size(), GL_UNSIGNED_INT, triangles.data());
 	// annotation
@@ -194,13 +214,19 @@ int main(int ac, char** av) {
 		printf("can’t read %s\n", objFilename);
 	else
 		printf("opened %s\n", objFilename);
+
 	// enable anti-alias, init app window and GL context
-	GLFWwindow* w = InitGLFW(100, 100, winWidth, winHeight, "Smooth Mesh");
+	GLFWwindow* w = InitGLFW(100, 100, winWidth, winHeight, "Bumpy Mesh");
 	// init shader program, set GPU buffer, read texture image
 	program = LinkProgramViaCode(&vertexShader, &pixelShader);
 	Standardize(points.data(), (int)points.size(), .8f);
+
 	BufferVertices();
 	textureName = ReadTexture(texFilename);
+	printf("opened %s\n", texFilename);
+	bumpName = ReadTexture(bumpFilename);
+	printf("opened %s\n", bumpFilename);
+
 	// callbacks
 	RegisterMouseMove(MouseMove);
 	RegisterMouseButton(MouseButton);

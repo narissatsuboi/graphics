@@ -200,7 +200,7 @@ int main(int ac, char **av) {
 	GLFWwindow *w = InitGLFW(100, 100, winWidth, winHeight, "Smooth Mesh");
 	// init shader program, set GPU buffer, read texture image
 	program = LinkProgramViaCode(&vertexShader, &pixelShader);
-	SetUvs();
+	// SetUvs();
 
 	Standardize(points.data(), points.size(), .8f); // fit points to +/- .8 space
 	
