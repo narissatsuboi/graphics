@@ -1,4 +1,5 @@
-# computer graphics
+# graphics with OpenGL/GLSL/C++
+Taught by Dr Jules Bloomenthal, guided by *Computer Graphics: Implementation and Explanation*
 
 <div align="center" width="100%">
 
